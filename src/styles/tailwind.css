@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light dark;
+}
+
+.dark body {
+  background-color: #0b0b0b;
+  color: #f3f4f6;
+}
+
+@layer base {
+  body {
+    @apply bg-fog text-graphite font-sans dark:bg-ink dark:text-fog;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply text-ink font-sans dark:text-white;
+  }
+}
+
+.htmx-indicator {
+  display: none;
+}
+
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+  display: inline-block;
+}
