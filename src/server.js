@@ -1,6 +1,7 @@
 const path = require('path');
 const express = require('express');
 const dotenv = require('dotenv');
+const { engine } = require('express-handlebars');
 const { createClient } = require('@supabase/supabase-js');
 
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
@@ -9,6 +10,37 @@ typeCheckEnv();
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+const viewsPath = path.join(__dirname, 'views');
+
+app.engine(
+  'hbs',
+  engine({
+    extname: '.hbs',
+    defaultLayout: 'main',
+    layoutsDir: path.join(viewsPath, 'layouts'),
+    partialsDir: path.join(viewsPath, 'partials'),
+    helpers: {
+      formatDate(value) {
+        if (!value) {
+          return 'Unknown date';
+        }
+
+        try {
+          return new Intl.DateTimeFormat('en', {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+          }).format(new Date(value));
+        } catch (_err) {
+          return 'Unknown date';
+        }
+      },
+    },
+  })
+);
+
+app.set('views', viewsPath);
+app.set('view engine', 'hbs');
 
 const supabaseClient = createSupabaseClient();
 
@@ -23,8 +55,26 @@ app.get('/health', (_req, res) => {
 const workoutsRouter = require('./routes/workouts')(supabaseClient);
 app.use('/workouts', workoutsRouter);
 
+app.get('/', async (_req, res) => {
+  const supabaseReady = Boolean(supabaseClient);
+  const { workouts, error } = await fetchRecentWorkouts(supabaseClient);
+
+  if (error) {
+    console.error('Failed to prefetch workouts for home view', error);
+  }
+
+  res.render('home', {
+    pageTitle: 'Home',
+    supabaseReady,
+    workouts,
+  });
+});
+
 app.use((_req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+  res.status(404).render('404', {
+    layout: 'main',
+    pageTitle: 'Not found',
+  });
 });
 
 app.listen(port, () => {
@@ -52,4 +102,18 @@ function createSupabaseClient() {
       persistSession: false,
     },
   });
+}
+
+async function fetchRecentWorkouts(supabase) {
+  if (!supabase) {
+    return { workouts: [], error: null };
+  }
+
+  const { data, error } = await supabase
+    .from('workouts')
+    .select('*')
+    .order('performed_at', { ascending: false })
+    .limit(20);
+
+  return { workouts: data || [], error };
 }

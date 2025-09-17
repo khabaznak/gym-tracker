@@ -3,7 +3,8 @@ module.exports = {
   darkMode: 'media',
   content: [
     "./public/**/*.html",
-    "./src/**/*.js"
+    "./src/**/*.js",
+    "./src/views/**/*.hbs"
   ],
   theme: {
     extend: {

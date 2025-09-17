@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{#if pageTitle}}{{pageTitle}} | Gym Tracker{{else}}Gym Tracker{{/if}}</title>
+    <link rel="stylesheet" href="/css/tailwind.css" />
+    <script
+      defer
+      src="https://unpkg.com/htmx.org@1.9.12"
+      integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2"
+      crossorigin="anonymous"
+    ></script>
+  </head>
+  <body class="min-h-screen bg-fog text-graphite dark:bg-ink dark:text-fog">
+    {{{body}}}
+  </body>
+</html>

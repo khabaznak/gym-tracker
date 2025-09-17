@@ -1,0 +1,9 @@
+<article class="flex flex-col gap-1 rounded-lg border border-graphite/15 bg-white p-4 shadow-sm transition hover:border-teal dark:border-fog/10 dark:bg-graphite dark:hover:border-orange">
+  <div class="flex items-baseline justify-between">
+    <h3 class="text-lg font-semibold text-ink dark:text-white">{{workout.name}}</h3>
+    <time class="text-xs uppercase tracking-wide text-graphite/60 dark:text-fog/60">{{formatDate workout.performed_at}}</time>
+  </div>
+  {{#if workout.notes}}
+    <p class="text-sm text-graphite/80 dark:text-fog/70">{{workout.notes}}</p>
+  {{/if}}
+</article>
