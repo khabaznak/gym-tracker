@@ -9,7 +9,29 @@
       </div>
 
       {{#if notes}}
-        <p class="leading-relaxed text-graphite/80 dark:text-fog/80">{{notes}}</p>
+        <p class="leading-relaxed text-graphite/80 dark:text-fog/80 whitespace-pre-line">{{notes}}</p>
+      {{/if}}
+
+      {{#if cues}}
+        <p class="rounded-lg bg-white/60 px-3 py-2 text-sm text-graphite/80 shadow-sm dark:bg-ink/40 dark:text-fog/80">
+          <span class="font-semibold uppercase tracking-wide text-xs text-graphite/60 dark:text-fog/60">Cues</span>
+          <br />
+          <span class="whitespace-pre-line">{{cues}}</span>
+        </p>
+      {{/if}}
+
+      {{#if video_url}}
+        <a
+          href="{{video_url}}"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2 text-sm font-semibold text-teal hover:text-teal-dark dark:text-orange dark:hover:text-orange-dark"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6A2.25 2.25 0 0 0 5.25 5.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l6-6m0 0v4.5M18 3h-4.5" />
+          </svg>
+          Watch demo
+        </a>
       {{/if}}
 
       <div class="flex flex-wrap gap-2 text-xs text-graphite/70 dark:text-fog/60">

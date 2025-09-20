@@ -46,13 +46,40 @@ module.exports = (supabase) => {
       return respond(req, res, 501, 'Supabase not configured');
     }
 
-    const { name } = req.body;
+    const {
+      name,
+      category,
+      primary_muscle,
+      secondary_muscles,
+      equipment,
+      tempo,
+      notes,
+      cues,
+      video_url,
+    } = req.body;
 
-    if (!name) {
+    const trimmedName = typeof name === 'string' ? name.trim() : '';
+
+    if (!trimmedName) {
       return respond(req, res, 400, 'Exercise name is required');
     }
 
-    const payload = { name };
+    const normalizedVideoUrl = normalizeUrl(video_url);
+    if (normalizedVideoUrl === false) {
+      return respond(req, res, 400, 'Video link must be a valid URL starting with http or https.');
+    }
+
+    const payload = {
+      name: trimmedName,
+      category: toNullableString(category),
+      primary_muscle: toNullableString(primary_muscle),
+      secondary_muscles: toNullableString(secondary_muscles),
+      equipment: toNullableString(equipment),
+      tempo: toNullableString(tempo),
+      notes: toNullableString(notes),
+      cues: toNullableString(cues),
+      video_url: normalizedVideoUrl,
+    };
 
     const { data, error } = await supabase.from('exercises').insert(payload).select().single();
 
@@ -62,7 +89,7 @@ module.exports = (supabase) => {
     }
 
     if (req.headers['hx-request']) {
-      return res.render('exercises/item-fragment', {
+      return res.status(201).render('exercises/create-response', {
         layout: false,
         exercise: data,
       });
@@ -105,4 +132,35 @@ function escapeHtml(string = '') {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+function toNullableString(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function normalizeUrl(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return false;
+    }
+
+    return parsed.toString();
+  } catch (_error) {
+    return false;
+  }
 }

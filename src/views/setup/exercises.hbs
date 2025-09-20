@@ -8,7 +8,7 @@
         <p class="mt-1 text-sm text-graphite/70 dark:text-fog/70">Create the movements, target zones, and prescriptions your athletes will follow.</p>
       </div>
       <a
-        href="#"
+        href="#new-exercise-form"
         class="inline-flex items-center gap-2 rounded-lg bg-teal px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-dark focus:outline-none focus:ring-2 focus:ring-teal/40 dark:bg-orange dark:hover:bg-orange-dark dark:focus:ring-orange/40"
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5">
@@ -29,9 +29,145 @@
       </article>
     </div>
 
+    <form
+      id="new-exercise-form"
+      class="mt-8 space-y-4 rounded-lg border border-graphite/10 bg-fog/60 p-4 shadow-sm dark:border-fog/15 dark:bg-graphite/60"
+      hx-post="/exercises"
+      hx-target="#exercise-form-messages"
+      hx-swap="innerHTML"
+      hx-on="htmx:afterSwap: if (event.detail.xhr.status === 201) { this.reset(); }"
+    >
+      <fieldset class="grid gap-4 md:grid-cols-2" {{#unless supabaseReady}}disabled{{/unless}}>
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="exercise-name">Exercise name<span class="text-orange">*</span></label>
+          <input
+            id="exercise-name"
+            name="name"
+            type="text"
+            placeholder="Barbell back squat"
+            required
+            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
+          />
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="exercise-category">Category</label>
+          <input
+            id="exercise-category"
+            name="category"
+            type="text"
+            placeholder="Strength"
+            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
+          />
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="primary-muscle">Primary muscle</label>
+          <input
+            id="primary-muscle"
+            name="primary_muscle"
+            type="text"
+            placeholder="Quadriceps"
+            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
+          />
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="secondary-muscles">Secondary muscles</label>
+          <input
+            id="secondary-muscles"
+            name="secondary_muscles"
+            type="text"
+            placeholder="Glutes, core"
+            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
+          />
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="exercise-equipment">Equipment</label>
+          <input
+            id="exercise-equipment"
+            name="equipment"
+            type="text"
+            placeholder="Rack, barbell"
+            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
+          />
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="exercise-tempo">Tempo</label>
+          <input
+            id="exercise-tempo"
+            name="tempo"
+            type="text"
+            placeholder="3-1-1"
+            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
+          />
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="exercise-video">Video link</label>
+          <input
+            id="exercise-video"
+            name="video_url"
+            type="url"
+            placeholder="https://example.com/demo"
+            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
+          />
+        </div>
+        <div class="md:col-span-2 flex flex-col gap-2">
+          <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="exercise-notes">Notes</label>
+          <textarea
+            id="exercise-notes"
+            name="notes"
+            rows="3"
+            placeholder="Coach notes, regressions, loading targets."
+            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
+          ></textarea>
+        </div>
+        <div class="md:col-span-2 flex flex-col gap-2">
+          <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="exercise-cues">Cues</label>
+          <textarea
+            id="exercise-cues"
+            name="cues"
+            rows="2"
+            placeholder="Drive knees out, keep chest tall."
+            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
+          ></textarea>
+        </div>
+      </fieldset>
+      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div id="exercise-form-messages" class="text-sm text-graphite/70 dark:text-fog/70"></div>
+        <div class="flex items-center gap-3">
+          <button
+            type="submit"
+            class="inline-flex items-center gap-2 rounded-lg bg-teal px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-dark focus:outline-none focus:ring-2 focus:ring-teal/40 dark:bg-orange dark:hover:bg-orange-dark dark:focus:ring-orange/40"
+            {{#unless supabaseReady}}disabled{{/unless}}
+          >
+            Save exercise
+          </button>
+          <span class="htmx-indicator text-sm text-graphite/70 dark:text-fog/70">Saving…</span>
+        </div>
+      </div>
+    </form>
+
     <div class="mt-8 space-y-3">
-      <h3 class="text-sm font-semibold uppercase tracking-wide text-graphite/70 dark:text-fog/60">Library entries</h3>
-      <div class="space-y-3" id="exercise-library">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold uppercase tracking-wide text-graphite/70 dark:text-fog/60">Library entries</h3>
+        <button
+          type="button"
+          class="text-sm font-semibold text-teal hover:text-teal-dark dark:text-orange dark:hover:text-orange-dark"
+          hx-get="/exercises/fragment"
+          hx-target="#exercise-library"
+          hx-swap="innerHTML"
+          {{#unless supabaseReady}}disabled{{/unless}}
+        >
+          Refresh
+        </button>
+      </div>
+      <div
+        class="space-y-3"
+        id="exercise-library"
+        {{#if supabaseReady}}
+          hx-get="/exercises/fragment"
+          hx-trigger="load"
+          hx-swap="innerHTML"
+        {{/if}}
+      >
         {{> exercises/list exercises=exercises supabaseReady=supabaseReady}}
       </div>
     </div>
@@ -39,7 +175,7 @@
 
   <section class="rounded-xl border border-dashed border-graphite/20 bg-white/40 p-6 text-sm text-graphite/70 dark:border-fog/30 dark:bg-graphite/50 dark:text-fog/70">
     {{#if supabaseReady}}
-      <p>Start wiring this screen to Supabase by adding insert/read endpoints for the <code class="rounded bg-graphite/10 px-1 py-0.5 text-xs text-graphite dark:bg-ink dark:text-fog">exercises</code> table. Once ready, the sidebar actions can open modal forms or dedicated pages.</p>
+      <p>Exercises you add here sync straight to Supabase. Extend the schema with advanced metadata, then surface it in cues, defaults, or workout builders.</p>
     {{else}}
       <p>Connect your Supabase project in <code class="rounded bg-graphite/10 px-1 py-0.5 text-xs text-graphite dark:bg-ink dark:text-fog">.env</code> to begin managing your exercise library from this dashboard.</p>
     {{/if}}
