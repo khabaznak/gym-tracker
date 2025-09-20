@@ -49,10 +49,13 @@ module.exports = (supabase) => {
     const {
       name,
       category,
+      target_muscle,
       primary_muscle,
       secondary_muscles,
       equipment,
       tempo,
+      target_sets,
+      target_repetitions,
       notes,
       cues,
       video_url,
@@ -69,10 +72,39 @@ module.exports = (supabase) => {
       return respond(req, res, 400, 'Video link must be a valid URL starting with http or https.');
     }
 
+    const targetMuscleValue =
+      typeof target_muscle === 'string' && target_muscle.trim()
+        ? target_muscle
+        : primary_muscle;
+    const normalizedTargetMuscle = toNullableString(targetMuscleValue);
+
+    if (!normalizedTargetMuscle) {
+      return respond(req, res, 400, 'Target muscle is required');
+    }
+
+    const repetitionsValue = normalizePositiveInteger(target_repetitions);
+    if (repetitionsValue === null) {
+      return respond(req, res, 400, 'Target repetitions is required');
+    }
+    if (repetitionsValue === false) {
+      return respond(req, res, 400, 'Target repetitions must be a positive whole number.');
+    }
+
+    const setsValue = normalizePositiveInteger(target_sets);
+    if (setsValue === null) {
+      return respond(req, res, 400, 'Target sets is required');
+    }
+    if (setsValue === false) {
+      return respond(req, res, 400, 'Target sets must be a positive whole number.');
+    }
+
     const payload = {
       name: trimmedName,
       category: toNullableString(category),
       primary_muscle: toNullableString(primary_muscle),
+      target_muscle: normalizedTargetMuscle,
+      target_sets: setsValue,
+      target_repetitions: repetitionsValue,
       secondary_muscles: toNullableString(secondary_muscles),
       equipment: toNullableString(equipment),
       tempo: toNullableString(tempo),
@@ -163,4 +195,23 @@ function normalizeUrl(value) {
   } catch (_error) {
     return false;
   }
+}
+
+function normalizePositiveInteger(value) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  const normalized = typeof value === 'string' ? value.trim() : value;
+
+  if (normalized === '') {
+    return null;
+  }
+
+  const parsed = Number.parseInt(normalized, 10);
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    return false;
+  }
+
+  return parsed;
 }

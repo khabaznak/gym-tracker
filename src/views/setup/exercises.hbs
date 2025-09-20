@@ -60,12 +60,36 @@
           />
         </div>
         <div class="flex flex-col gap-2">
-          <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="primary-muscle">Primary muscle</label>
+          <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="target-muscle">Target muscle<span class="text-orange">*</span></label>
+          <input
+            id="target-muscle"
+            name="target_muscle"
+            type="text"
+            placeholder="Quadriceps"
+            required
+            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
+          />
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="target-sets">Target sets<span class="text-orange">*</span></label>
+          <input
+            id="target-sets"
+            name="target_sets"
+            type="number"
+            min="1"
+            step="1"
+            placeholder="4"
+            required
+            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
+          />
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="primary-muscle">Primary muscle (optional)</label>
           <input
             id="primary-muscle"
             name="primary_muscle"
             type="text"
-            placeholder="Quadriceps"
+            placeholder="Anterior chain"
             class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
           />
         </div>
@@ -96,6 +120,19 @@
             name="tempo"
             type="text"
             placeholder="3-1-1"
+            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
+          />
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="target-repetitions">Target repetitions<span class="text-orange">*</span></label>
+          <input
+            id="target-repetitions"
+            name="target_repetitions"
+            type="number"
+            min="1"
+            step="1"
+            placeholder="12"
+            required
             class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
           />
         </div>

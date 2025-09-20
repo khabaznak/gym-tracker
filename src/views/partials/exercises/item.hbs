@@ -38,8 +38,17 @@
         {{#if category}}
           <span class="rounded bg-white/40 px-2 py-1 dark:bg-ink/60">Category: {{category}}</span>
         {{/if}}
+        {{#if target_muscle}}
+          <span class="rounded bg-white/40 px-2 py-1 dark:bg-ink/60">Target: {{target_muscle}}</span>
+        {{/if}}
+        {{#if target_sets}}
+          <span class="rounded bg-white/40 px-2 py-1 dark:bg-ink/60">Target sets: {{target_sets}}</span>
+        {{/if}}
         {{#if primary_muscle}}
           <span class="rounded bg-white/40 px-2 py-1 dark:bg-ink/60">Primary: {{primary_muscle}}</span>
+        {{/if}}
+        {{#if target_repetitions}}
+          <span class="rounded bg-white/40 px-2 py-1 dark:bg-ink/60">Target reps: {{target_repetitions}}</span>
         {{/if}}
         {{#if secondary_muscles}}
           <span class="rounded bg-white/40 px-2 py-1 dark:bg-ink/60">Secondary: {{secondary_muscles}}</span>
