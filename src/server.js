@@ -56,7 +56,10 @@ app.get('/health', (_req, res) => {
 });
 
 const workoutsRouter = require('./routes/workouts')(supabaseClient);
+const exercisesRouter = require('./routes/exercises')(supabaseClient);
+
 app.use('/workouts', workoutsRouter);
+app.use('/exercises', exercisesRouter);
 
 app.get('/', async (_req, res) => {
   const supabaseReady = Boolean(supabaseClient);
@@ -74,12 +77,24 @@ app.get('/', async (_req, res) => {
   });
 });
 
-app.get('/setup/exercises', (_req, res) => {
+app.get('/setup/exercises', async (_req, res) => {
   const supabaseReady = Boolean(supabaseClient);
+  let exercises = [];
+
+  if (supabaseClient) {
+    const result = await fetchExercises(supabaseClient);
+
+    if (result.error) {
+      console.error('Failed to load exercises for setup view', result.error);
+    } else {
+      exercises = result.exercises;
+    }
+  }
 
   res.render('setup/exercises', {
     pageTitle: 'Manage Exercises',
     supabaseReady,
+    exercises,
     activeNav: 'setup-exercises',
   });
 });
@@ -167,4 +182,18 @@ async function fetchRecentWorkouts(supabase) {
     .limit(20);
 
   return { workouts: data || [], error };
+}
+
+async function fetchExercises(supabase) {
+  if (!supabase) {
+    return { exercises: [], error: null };
+  }
+
+  const { data, error } = await supabase
+    .from('exercises')
+    .select('*')
+    .order('name', { ascending: true })
+    .limit(100);
+
+  return { exercises: data || [], error };
 }

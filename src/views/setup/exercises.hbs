@@ -28,6 +28,13 @@
         <p class="mt-2 leading-relaxed">Capture sets, repetitions, technique cues, tempo, and equipment. Athletes get clarity, coaches get consistency.</p>
       </article>
     </div>
+
+    <div class="mt-8 space-y-3">
+      <h3 class="text-sm font-semibold uppercase tracking-wide text-graphite/70 dark:text-fog/60">Library entries</h3>
+      <div class="space-y-3" id="exercise-library">
+        {{> exercises/list exercises=exercises supabaseReady=supabaseReady}}
+      </div>
+    </div>
   </section>
 
   <section class="rounded-xl border border-dashed border-graphite/20 bg-white/40 p-6 text-sm text-graphite/70 dark:border-fog/30 dark:bg-graphite/50 dark:text-fog/70">

@@ -1,0 +1,11 @@
+{{#if exercises.length}}
+  {{#each exercises}}
+    {{> exercises/item exercise=this}}
+  {{/each}}
+{{else}}
+  {{#if supabaseReady}}
+    <p class="text-sm text-graphite/70 dark:text-fog/70">No exercises defined yet.</p>
+  {{else}}
+    <p class="text-sm text-orange dark:text-orange/80">Supabase is not configured yet. Add your credentials to manage exercises.</p>
+  {{/if}}
+{{/if}}

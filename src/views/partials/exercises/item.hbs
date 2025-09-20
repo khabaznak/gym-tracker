@@ -1,0 +1,34 @@
+{{#with exercise}}
+  <article class="rounded-lg border border-graphite/10 bg-fog p-4 text-sm text-graphite/80 dark:border-fog/15 dark:bg-graphite/60 dark:text-fog/80">
+    <div class="flex flex-col gap-2">
+      <div class="flex items-baseline justify-between gap-3">
+        <h3 class="text-base font-semibold text-ink dark:text-white">{{name}}</h3>
+        {{#if created_at}}
+          <time datetime="{{created_at}}" class="text-xs text-graphite/70 dark:text-fog/60">Added {{formatDate created_at}}</time>
+        {{/if}}
+      </div>
+
+      {{#if notes}}
+        <p class="leading-relaxed text-graphite/80 dark:text-fog/80">{{notes}}</p>
+      {{/if}}
+
+      <div class="flex flex-wrap gap-2 text-xs text-graphite/70 dark:text-fog/60">
+        {{#if category}}
+          <span class="rounded bg-white/40 px-2 py-1 dark:bg-ink/60">Category: {{category}}</span>
+        {{/if}}
+        {{#if primary_muscle}}
+          <span class="rounded bg-white/40 px-2 py-1 dark:bg-ink/60">Primary: {{primary_muscle}}</span>
+        {{/if}}
+        {{#if secondary_muscles}}
+          <span class="rounded bg-white/40 px-2 py-1 dark:bg-ink/60">Secondary: {{secondary_muscles}}</span>
+        {{/if}}
+        {{#if equipment}}
+          <span class="rounded bg-white/40 px-2 py-1 dark:bg-ink/60">Equipment: {{equipment}}</span>
+        {{/if}}
+        {{#if tempo}}
+          <span class="rounded bg-white/40 px-2 py-1 dark:bg-ink/60">Tempo: {{tempo}}</span>
+        {{/if}}
+      </div>
+    </div>
+  </article>
+{{/with}}
