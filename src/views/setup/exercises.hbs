@@ -1,0 +1,40 @@
+{{> header title="Manage Exercises" subtitle="Build the exercise library that powers your workouts."}}
+
+<main class="mx-auto mt-10 flex w-full max-w-5xl flex-col gap-8 px-6 pb-16">
+  <section class="rounded-xl bg-white p-6 shadow-lg ring-1 ring-graphite/10 dark:bg-graphite dark:text-fog dark:ring-graphite/40">
+    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div>
+        <h2 class="text-lg font-semibold text-ink dark:text-white">Exercise library</h2>
+        <p class="mt-1 text-sm text-graphite/70 dark:text-fog/70">Create the movements, target zones, and prescriptions your athletes will follow.</p>
+      </div>
+      <a
+        href="#"
+        class="inline-flex items-center gap-2 rounded-lg bg-teal px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-dark focus:outline-none focus:ring-2 focus:ring-teal/40 dark:bg-orange dark:hover:bg-orange-dark dark:focus:ring-orange/40"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+        New exercise
+      </a>
+    </div>
+
+    <div class="mt-6 grid gap-4 lg:grid-cols-2">
+      <article class="rounded-lg border border-graphite/10 bg-fog p-4 text-sm text-graphite/80 dark:border-fog/15 dark:bg-graphite/60 dark:text-fog/80">
+        <h3 class="text-base font-semibold text-ink dark:text-white">Target muscles</h3>
+        <p class="mt-2 leading-relaxed">Define the muscle group or specific heads worked by the movement so training blocks stay intentional.</p>
+      </article>
+      <article class="rounded-lg border border-graphite/10 bg-fog p-4 text-sm text-graphite/80 dark:border-fog/15 dark:bg-graphite/60 dark:text-fog/80">
+        <h3 class="text-base font-semibold text-ink dark:text-white">Prescription details</h3>
+        <p class="mt-2 leading-relaxed">Capture sets, repetitions, technique cues, tempo, and equipment. Athletes get clarity, coaches get consistency.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="rounded-xl border border-dashed border-graphite/20 bg-white/40 p-6 text-sm text-graphite/70 dark:border-fog/30 dark:bg-graphite/50 dark:text-fog/70">
+    {{#if supabaseReady}}
+      <p>Start wiring this screen to Supabase by adding insert/read endpoints for the <code class="rounded bg-graphite/10 px-1 py-0.5 text-xs text-graphite dark:bg-ink dark:text-fog">exercises</code> table. Once ready, the sidebar actions can open modal forms or dedicated pages.</p>
+    {{else}}
+      <p>Connect your Supabase project in <code class="rounded bg-graphite/10 px-1 py-0.5 text-xs text-graphite dark:bg-ink dark:text-fog">.env</code> to begin managing your exercise library from this dashboard.</p>
+    {{/if}}
+  </section>
+</main>

@@ -1,0 +1,97 @@
+<div class="flex h-full flex-col gap-8">
+  <div class="flex items-center gap-3 px-5 pt-6">
+    <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-teal text-white shadow-sm dark:bg-orange dark:text-ink">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 9.75v4.5m15-4.5v4.5M9 6.75v10.5m6-10.5v10.5M3 12h18" />
+      </svg>
+    </div>
+    <div>
+      <p class="text-sm font-semibold text-ink dark:text-fog">Gym Tracker</p>
+      <p class="text-xs text-graphite/70 dark:text-fog/60">Stronger sessions, smarter data</p>
+    </div>
+  </div>
+
+  <nav class="flex flex-1 flex-col justify-between px-5 pb-6">
+    <div class="flex flex-col gap-6">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Overview</p>
+        <div class="mt-3 space-y-2">
+          <a
+            href="/"
+            class="sidebar-link {{#if (eq active 'dashboard')}}sidebar-link-active{{else}}sidebar-link-default{{/if}}"
+          >
+            <span class="sidebar-icon {{#if (eq active 'dashboard')}}sidebar-icon-active{{/if}}">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 9.75 12 4.5l9 5.25v7.5A1.5 1.5 0 0 1 19.5 18.75h-15A1.5 1.5 0 0 1 3 17.25v-7.5Z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 21V12h4.5v9" />
+              </svg>
+            </span>
+            <span>Dashboard</span>
+          </a>
+        </div>
+      </div>
+
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Setup</p>
+        <div class="mt-3 space-y-2">
+          <a
+            href="/setup/exercises"
+            class="sidebar-link {{#if (eq active 'setup-exercises')}}sidebar-link-active{{else}}sidebar-link-default{{/if}}"
+          >
+            <span class="sidebar-icon {{#if (eq active 'setup-exercises')}}sidebar-icon-active{{/if}}">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 8.25h15M4.5 15.75h15M7.5 5.25v13.5m9-13.5v13.5" />
+              </svg>
+            </span>
+            <span>Manage Exercises</span>
+          </a>
+          <a
+            href="/setup/workouts"
+            class="sidebar-link {{#if (eq active 'setup-workouts')}}sidebar-link-active{{else}}sidebar-link-default{{/if}}"
+          >
+            <span class="sidebar-icon {{#if (eq active 'setup-workouts')}}sidebar-icon-active{{/if}}">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 3v3m8-3v3M4.5 9h15M6 5h12a1.5 1.5 0 0 1 1.5 1.5v12A1.5 1.5 0 0 1 18 20H6a1.5 1.5 0 0 1-1.5-1.5v-12A1.5 1.5 0 0 1 6 5Zm3 8h6" />
+              </svg>
+            </span>
+            <span>Manage Workouts</span>
+          </a>
+        </div>
+      </div>
+
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Tracking</p>
+        <div class="mt-3 space-y-2">
+          <a
+            href="/tracking/sessions"
+            class="sidebar-link {{#if (eq active 'tracking-sessions')}}sidebar-link-active{{else}}sidebar-link-default{{/if}}"
+          >
+            <span class="sidebar-icon {{#if (eq active 'tracking-sessions')}}sidebar-icon-active{{/if}}">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+            </span>
+            <span>Session Tracker</span>
+          </a>
+          <a
+            href="/tracking/notes"
+            class="sidebar-link {{#if (eq active 'tracking-notes')}}sidebar-link-active{{else}}sidebar-link-default{{/if}}"
+          >
+            <span class="sidebar-icon {{#if (eq active 'tracking-notes')}}sidebar-icon-active{{/if}}">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 6.75A2.25 2.25 0 0 1 6.75 4.5h7.5A2.25 2.25 0 0 1 16.5 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-7.5A2.25 2.25 0 0 1 4.5 17.25v-10.5Zm12 0H18a1.5 1.5 0 0 1 1.5 1.5v9a2.25 2.25 0 0 1-2.25 2.25h-4.5" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 9.75h4.5m-4.5 3h4.5" />
+              </svg>
+            </span>
+            <span>Exercise Notes</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-lg bg-white p-4 text-xs text-graphite/70 shadow-sm dark:bg-graphite dark:text-fog/70">
+      <p class="font-semibold text-graphite dark:text-fog">Need a new feature?</p>
+      <p class="mt-1 leading-relaxed">Use these menus to configure your library and capture performance insights from every session.</p>
+    </div>
+  </nav>
+</div>

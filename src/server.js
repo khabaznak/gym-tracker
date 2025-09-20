@@ -35,6 +35,9 @@ app.engine(
           return 'Unknown date';
         }
       },
+      eq(left, right) {
+        return left === right;
+      },
     },
   })
 );
@@ -67,6 +70,53 @@ app.get('/', async (_req, res) => {
     pageTitle: 'Home',
     supabaseReady,
     workouts,
+    activeNav: 'dashboard',
+  });
+});
+
+app.get('/setup/exercises', (_req, res) => {
+  const supabaseReady = Boolean(supabaseClient);
+
+  res.render('setup/exercises', {
+    pageTitle: 'Manage Exercises',
+    supabaseReady,
+    activeNav: 'setup-exercises',
+  });
+});
+
+app.get('/setup/workouts', async (_req, res) => {
+  const supabaseReady = Boolean(supabaseClient);
+  const { workouts, error } = await fetchRecentWorkouts(supabaseClient);
+
+  if (error) {
+    console.error('Failed to load workouts for setup view', error);
+  }
+
+  res.render('setup/workouts', {
+    pageTitle: 'Manage Workouts',
+    supabaseReady,
+    workouts,
+    activeNav: 'setup-workouts',
+  });
+});
+
+app.get('/tracking/sessions', (_req, res) => {
+  const supabaseReady = Boolean(supabaseClient);
+
+  res.render('tracking/sessions', {
+    pageTitle: 'Session Tracker',
+    supabaseReady,
+    activeNav: 'tracking-sessions',
+  });
+});
+
+app.get('/tracking/notes', (_req, res) => {
+  const supabaseReady = Boolean(supabaseClient);
+
+  res.render('tracking/notes', {
+    pageTitle: 'Exercise Notes',
+    supabaseReady,
+    activeNav: 'tracking-notes',
   });
 });
 
@@ -74,6 +124,7 @@ app.use((_req, res) => {
   res.status(404).render('404', {
     layout: 'main',
     pageTitle: 'Not found',
+    activeNav: null,
   });
 });
 

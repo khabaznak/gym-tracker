@@ -1,0 +1,33 @@
+{{> header title="Manage Workouts" subtitle="Curate sessions that group exercises around a focused objective."}}
+
+<main class="mx-auto mt-10 flex w-full max-w-5xl flex-col gap-8 px-6 pb-16">
+  <section class="rounded-xl bg-white p-6 shadow-lg ring-1 ring-graphite/10 dark:bg-graphite dark:text-fog dark:ring-graphite/40">
+    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div>
+        <h2 class="text-lg font-semibold text-ink dark:text-white">Workout templates</h2>
+        <p class="mt-1 text-sm text-graphite/70 dark:text-fog/70">Bundle exercises, set objectives, and publish sessions to your athletes.</p>
+      </div>
+      <a
+        href="#"
+        class="inline-flex items-center gap-2 rounded-lg bg-teal px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-dark focus:outline-none focus:ring-2 focus:ring-teal/40 dark:bg-orange dark:hover:bg-orange-dark dark:focus:ring-orange/40"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+        New workout
+      </a>
+    </div>
+
+    <div class="mt-6 space-y-3">
+      {{> workouts/list workouts=workouts supabaseReady=supabaseReady}}
+    </div>
+  </section>
+
+  <section class="rounded-xl border border-dashed border-graphite/20 bg-white/40 p-6 text-sm text-graphite/70 dark:border-fog/30 dark:bg-graphite/50 dark:text-fog/70">
+    {{#if supabaseReady}}
+      <p>Hook this screen into Supabase by extending the workouts router with update/delete operations and exposing the <code class="rounded bg-graphite/10 px-1 py-0.5 text-xs text-graphite dark:bg-ink dark:text-fog">workout_exercises</code> join table. From there you can drive drag-and-drop or form-based editors.</p>
+    {{else}}
+      <p>Once Supabase credentials are configured, you can manage saved sessions here. Use the sidebar to jump back to the dashboard anytime.</p>
+    {{/if}}
+  </section>
+</main>

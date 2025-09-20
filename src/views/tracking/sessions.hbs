@@ -1,0 +1,35 @@
+{{> header title="Session Tracker" subtitle="Log daily performance, monitor adherence, and capture quick wins."}}
+
+<main class="mx-auto mt-10 flex w-full max-w-5xl flex-col gap-8 px-6 pb-16">
+  <section class="rounded-xl bg-white p-6 shadow-lg ring-1 ring-graphite/10 dark:bg-graphite dark:text-fog dark:ring-graphite/40">
+    <h2 class="text-lg font-semibold text-ink dark:text-white">Today&apos;s session</h2>
+    <p class="mt-2 text-sm text-graphite/70 dark:text-fog/70">Select a workout template, adjust targets if needed, and mark completion as you progress.</p>
+
+    <div class="mt-6 grid gap-4 lg:grid-cols-2">
+      <button
+        type="button"
+        class="flex flex-col gap-2 rounded-lg border border-graphite/10 bg-fog p-4 text-left text-sm text-graphite shadow-sm transition hover:border-teal hover:bg-white dark:border-fog/15 dark:bg-graphite/60 dark:text-fog/80 dark:hover:border-orange dark:hover:bg-graphite"
+      >
+        <span class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Step 1</span>
+        <span class="text-base font-semibold text-ink dark:text-white">Choose workout</span>
+        <span class="text-sm">Link a workout template to start the day&apos;s planning.</span>
+      </button>
+      <button
+        type="button"
+        class="flex flex-col gap-2 rounded-lg border border-graphite/10 bg-fog p-4 text-left text-sm text-graphite shadow-sm transition hover:border-teal hover:bg-white dark:border-fog/15 dark:bg-graphite/60 dark:text-fog/80 dark:hover:border-orange dark:hover:bg-graphite"
+      >
+        <span class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Step 2</span>
+        <span class="text-base font-semibold text-ink dark:text-white">Track performance</span>
+        <span class="text-sm">Record achieved sets, reps, and weight to build a history of progress.</span>
+      </button>
+    </div>
+  </section>
+
+  <section class="rounded-xl border border-dashed border-graphite/20 bg-white/40 p-6 text-sm text-graphite/70 dark:border-fog/30 dark:bg-graphite/50 dark:text-fog/70">
+    {{#if supabaseReady}}
+      <p>Next steps: wire this tracker to Supabase by storing session headers in a <code class="rounded bg-graphite/10 px-1 py-0.5 text-xs text-graphite dark:bg-ink dark:text-fog">sessions</code> table and linking performed sets to <code class="rounded bg-graphite/10 px-1 py-0.5 text-xs text-graphite dark:bg-ink dark:text-fog">session_entries</code>. HTMX can progressively enhance each interaction.</p>
+    {{else}}
+      <p>Connect Supabase to begin logging session data. Once configured, this screen becomes the command center for daily training.</p>
+    {{/if}}
+  </section>
+</main>

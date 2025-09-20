@@ -13,6 +13,13 @@
     ></script>
   </head>
   <body class="min-h-screen bg-fog text-graphite dark:bg-ink dark:text-fog">
-    {{{body}}}
+    <div class="flex min-h-screen bg-fog text-graphite dark:bg-ink dark:text-fog">
+      <aside class="flex w-72 flex-col border-r border-graphite/10 bg-white/80 backdrop-blur-lg dark:border-ink/60 dark:bg-graphite/80">
+        {{> navigation/sidebar active=activeNav}}
+      </aside>
+      <div class="flex min-h-screen flex-1 flex-col overflow-y-auto">
+        {{{body}}}
+      </div>
+    </div>
   </body>
 </html>

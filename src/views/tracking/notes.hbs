@@ -1,0 +1,40 @@
+{{> header title="Exercise Notes" subtitle="Capture observations, cues, and recovery feedback for every movement."}}
+
+<main class="mx-auto mt-10 flex w-full max-w-5xl flex-col gap-8 px-6 pb-16">
+  <section class="rounded-xl bg-white p-6 shadow-lg ring-1 ring-graphite/10 dark:bg-graphite dark:text-fog dark:ring-graphite/40">
+    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div>
+        <h2 class="text-lg font-semibold text-ink dark:text-white">Daily commentary</h2>
+        <p class="mt-1 text-sm text-graphite/70 dark:text-fog/70">Context is king—log cues, pain signals, and mindset notes alongside each exercise.</p>
+      </div>
+      <button
+        type="button"
+        class="inline-flex items-center gap-2 rounded-lg border border-graphite/20 px-4 py-2 text-sm font-semibold text-graphite shadow-sm transition hover:border-teal hover:text-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/20 dark:text-fog dark:hover:border-orange dark:hover:text-orange dark:focus:ring-orange/30"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 7.5h9m-9 4.5h6M5.25 5.25h13.5A1.5 1.5 0 0 1 20.25 6.75v10.5a1.5 1.5 0 0 1-1.5 1.5H9.75L5.25 21V6.75a1.5 1.5 0 0 1 1.5-1.5Z" />
+        </svg>
+        Quick note
+      </button>
+    </div>
+
+    <div class="mt-6 space-y-4">
+      <article class="rounded-lg border border-graphite/10 bg-fog p-4 text-sm text-graphite shadow-sm dark:border-fog/15 dark:bg-graphite/60 dark:text-fog/80">
+        <h3 class="text-base font-semibold text-ink dark:text-white">Session narratives</h3>
+        <p class="mt-2 leading-relaxed">Attach running commentary to each set so you can spot trends—fatigue, tempo drift, or movement prep that made a difference.</p>
+      </article>
+      <article class="rounded-lg border border-graphite/10 bg-fog p-4 text-sm text-graphite shadow-sm dark:border-fog/15 dark:bg-graphite/60 dark:text-fog/80">
+        <h3 class="text-base font-semibold text-ink dark:text-white">Recovery feedback</h3>
+        <p class="mt-2 leading-relaxed">Log sleep quality, soreness, and readiness to adjust future sessions without losing historical context.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="rounded-xl border border-dashed border-graphite/20 bg-white/40 p-6 text-sm text-graphite/70 dark:border-fog/30 dark:bg-graphite/50 dark:text-fog/70">
+    {{#if supabaseReady}}
+      <p>Plan a <code class="rounded bg-graphite/10 px-1 py-0.5 text-xs text-graphite dark:bg-ink dark:text-fog">notes</code> table keyed to performed sets or workouts. HTMX can progressively hydrate note cards as athletes capture quick commentary.</p>
+    {{else}}
+      <p>Add your Supabase keys to begin persisting exercise notes alongside each workout.</p>
+    {{/if}}
+  </section>
+</main>

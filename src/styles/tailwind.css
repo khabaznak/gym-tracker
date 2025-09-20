@@ -23,6 +23,28 @@
   }
 }
 
+@layer components {
+  .sidebar-link {
+    @apply flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold transition;
+  }
+
+  .sidebar-link-default {
+    @apply bg-white text-graphite hover:bg-teal/10 dark:bg-graphite dark:text-fog dark:hover:bg-orange/20;
+  }
+
+  .sidebar-link-active {
+    @apply bg-teal text-white shadow-sm dark:bg-orange dark:text-ink;
+  }
+
+  .sidebar-icon {
+    @apply flex h-9 w-9 items-center justify-center rounded-md bg-teal/10 text-teal transition dark:bg-orange/20 dark:text-orange;
+  }
+
+  .sidebar-icon-active {
+    @apply bg-white text-teal dark:bg-ink dark:text-orange;
+  }
+}
+
 .htmx-indicator {
   display: none;
 }
