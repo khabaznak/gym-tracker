@@ -1,0 +1,169 @@
+{{#with exercise}}
+  <article
+    id="exercise-{{id}}"
+    class="rounded-lg border border-graphite/10 bg-fog p-4 text-sm text-graphite/80 shadow-sm dark:border-fog/15 dark:bg-graphite/60 dark:text-fog/80"
+  >
+    <form
+      class="space-y-4"
+      hx-put="/exercises/{{id}}"
+      hx-target="#exercise-{{id}}"
+      hx-swap="outerHTML"
+    >
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="space-y-1">
+          <h3 class="text-base font-semibold text-ink dark:text-white">Edit {{name}}</h3>
+          {{#if updated_at}}
+            <time datetime="{{updated_at}}" class="block text-xs text-graphite/70 dark:text-fog/60">Last updated {{formatDate updated_at}}</time>
+          {{/if}}
+        </div>
+        <span class="htmx-indicator text-xs uppercase tracking-wide text-graphite/60 dark:text-fog/60">Saving…</span>
+      </div>
+
+      <div class="grid gap-4 md:grid-cols-2">
+        <label class="flex flex-col gap-2 text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/50">
+          <span class="text-graphite/80 dark:text-fog/80">Exercise name<span class="text-orange">*</span></span>
+          <input
+            name="name"
+            type="text"
+            value="{{name}}"
+            required
+            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:focus:border-teal dark:focus:ring-teal/40"
+          />
+        </label>
+        <label class="flex flex-col gap-2 text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/50">
+          <span class="text-graphite/80 dark:text-fog/80">Category</span>
+          <input
+            name="category"
+            type="text"
+            value="{{category}}"
+            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:focus:border-teal dark:focus:ring-teal/40"
+          />
+        </label>
+        <label class="flex flex-col gap-2 text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/50">
+          <span class="text-graphite/80 dark:text-fog/80">Target muscle<span class="text-orange">*</span></span>
+          <input
+            name="target_muscle"
+            type="text"
+            value="{{target_muscle}}"
+            required
+            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:focus:border-teal dark:focus:ring-teal/40"
+          />
+        </label>
+        <label class="flex flex-col gap-2 text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/50">
+          <span class="text-graphite/80 dark:text-fog/80">Target sets<span class="text-orange">*</span></span>
+          <input
+            name="target_sets"
+            type="number"
+            min="1"
+            step="1"
+            value="{{target_sets}}"
+            required
+            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:focus:border-teal dark:focus:ring-teal/40"
+          />
+        </label>
+        <label class="flex flex-col gap-2 text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/50">
+          <span class="text-graphite/80 dark:text-fog/80">Primary muscle (optional)</span>
+          <input
+            name="primary_muscle"
+            type="text"
+            value="{{primary_muscle}}"
+            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:focus:border-teal dark:focus:ring-teal/40"
+          />
+        </label>
+        <label class="flex flex-col gap-2 text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/50">
+          <span class="text-graphite/80 dark:text-fog/80">Secondary muscles</span>
+          <input
+            name="secondary_muscles"
+            type="text"
+            value="{{secondary_muscles}}"
+            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:focus:border-teal dark:focus:ring-teal/40"
+          />
+        </label>
+        <label class="flex flex-col gap-2 text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/50">
+          <span class="text-graphite/80 dark:text-fog/80">Equipment</span>
+          <input
+            name="equipment"
+            type="text"
+            value="{{equipment}}"
+            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:focus:border-teal dark:focus:ring-teal/40"
+          />
+        </label>
+        <label class="flex flex-col gap-2 text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/50">
+          <span class="text-graphite/80 dark:text-fog/80">Tempo</span>
+          <input
+            name="tempo"
+            type="text"
+            value="{{tempo}}"
+            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:focus:border-teal dark:focus:ring-teal/40"
+          />
+        </label>
+        <label class="flex flex-col gap-2 text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/50">
+          <span class="text-graphite/80 dark:text-fog/80">Target repetitions<span class="text-orange">*</span></span>
+          <input
+            name="target_repetitions"
+            type="number"
+            min="1"
+            step="1"
+            value="{{target_repetitions}}"
+            required
+            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:focus:border-teal dark:focus:ring-teal/40"
+          />
+        </label>
+        <label class="flex flex-col gap-2 text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/50">
+          <span class="text-graphite/80 dark:text-fog/80">Video link</span>
+          <input
+            name="video_url"
+            type="url"
+            value="{{video_url}}"
+            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:focus:border-teal dark:focus:ring-teal/40"
+          />
+        </label>
+      </div>
+
+      <label class="flex flex-col gap-2 text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/50">
+        <span class="text-graphite/80 dark:text-fog/80">Notes</span>
+        <textarea
+          name="notes"
+          rows="3"
+          class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:focus:border-teal dark:focus:ring-teal/40"
+        >{{notes}}</textarea>
+      </label>
+
+      <label class="flex flex-col gap-2 text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/50">
+        <span class="text-graphite/80 dark:text-fog/80">Cues</span>
+        <textarea
+          name="cues"
+          rows="2"
+          class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:focus:border-teal dark:focus:ring-teal/40"
+        >{{cues}}</textarea>
+      </label>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <button
+          type="submit"
+          class="inline-flex items-center gap-2 rounded-lg bg-teal px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-dark focus:outline-none focus:ring-2 focus:ring-teal/40 dark:bg-orange dark:hover:bg-orange-dark dark:focus:ring-orange/40"
+        >
+          Save changes
+        </button>
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-lg border border-graphite/20 px-4 py-2 text-sm font-semibold text-graphite transition hover:border-graphite/40 hover:text-ink focus:outline-none focus:ring-2 focus:ring-graphite/30 dark:border-fog/30 dark:text-fog dark:hover:border-fog/60 dark:hover:text-white dark:focus:ring-fog/30"
+          hx-get="/exercises/{{id}}/fragment"
+          hx-target="#exercise-{{id}}"
+          hx-swap="outerHTML"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 transition hover:border-red-400 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-200 dark:border-orange/50 dark:text-orange dark:hover:border-orange dark:hover:text-orange/80 dark:focus:ring-orange/30"
+          data-action="exercise-delete"
+          data-exercise-id="{{id}}"
+          data-exercise-name="{{name}}"
+        >
+          Delete
+        </button>
+      </div>
+    </form>
+  </article>
+{{/with}}

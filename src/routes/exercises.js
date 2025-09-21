@@ -46,72 +46,11 @@ module.exports = (supabase) => {
       return respond(req, res, 501, 'Supabase not configured');
     }
 
-    const {
-      name,
-      category,
-      target_muscle,
-      primary_muscle,
-      secondary_muscles,
-      equipment,
-      tempo,
-      target_sets,
-      target_repetitions,
-      notes,
-      cues,
-      video_url,
-    } = req.body;
+    const { payload, error: validationError } = buildExercisePayload(req.body);
 
-    const trimmedName = typeof name === 'string' ? name.trim() : '';
-
-    if (!trimmedName) {
-      return respond(req, res, 400, 'Exercise name is required');
+    if (validationError) {
+      return respond(req, res, 400, validationError);
     }
-
-    const normalizedVideoUrl = normalizeUrl(video_url);
-    if (normalizedVideoUrl === false) {
-      return respond(req, res, 400, 'Video link must be a valid URL starting with http or https.');
-    }
-
-    const targetMuscleValue =
-      typeof target_muscle === 'string' && target_muscle.trim()
-        ? target_muscle
-        : primary_muscle;
-    const normalizedTargetMuscle = toNullableString(targetMuscleValue);
-
-    if (!normalizedTargetMuscle) {
-      return respond(req, res, 400, 'Target muscle is required');
-    }
-
-    const repetitionsValue = normalizePositiveInteger(target_repetitions);
-    if (repetitionsValue === null) {
-      return respond(req, res, 400, 'Target repetitions is required');
-    }
-    if (repetitionsValue === false) {
-      return respond(req, res, 400, 'Target repetitions must be a positive whole number.');
-    }
-
-    const setsValue = normalizePositiveInteger(target_sets);
-    if (setsValue === null) {
-      return respond(req, res, 400, 'Target sets is required');
-    }
-    if (setsValue === false) {
-      return respond(req, res, 400, 'Target sets must be a positive whole number.');
-    }
-
-    const payload = {
-      name: trimmedName,
-      category: toNullableString(category),
-      primary_muscle: toNullableString(primary_muscle),
-      target_muscle: normalizedTargetMuscle,
-      target_sets: setsValue,
-      target_repetitions: repetitionsValue,
-      secondary_muscles: toNullableString(secondary_muscles),
-      equipment: toNullableString(equipment),
-      tempo: toNullableString(tempo),
-      notes: toNullableString(notes),
-      cues: toNullableString(cues),
-      video_url: normalizedVideoUrl,
-    };
 
     const { data, error } = await supabase.from('exercises').insert(payload).select().single();
 
@@ -128,6 +67,132 @@ module.exports = (supabase) => {
     }
 
     return res.status(201).json({ exercise: data });
+  });
+
+  router.get('/:id/fragment', async (req, res) => {
+    if (!supabase) {
+      return renderHxError(res, 501, 'Supabase not configured');
+    }
+
+    const { data, error, status } = await fetchExerciseById(supabase, req.params.id);
+
+    if (error) {
+      if (status === 406) {
+        return renderHxError(res, 404, 'Exercise not found');
+      }
+
+      console.error('Failed to load exercise', error);
+      return renderHxError(res, 500, 'Unable to load exercise');
+    }
+
+    return res.render('exercises/item-fragment', {
+      layout: false,
+      exercise: data,
+    });
+  });
+
+  router.get('/:id/edit', async (req, res) => {
+    if (!supabase) {
+      return renderHxError(res, 501, 'Supabase not configured');
+    }
+
+    const { data, error, status } = await fetchExerciseById(supabase, req.params.id);
+
+    if (error) {
+      if (status === 406) {
+        return renderHxError(res, 404, 'Exercise not found');
+      }
+
+      console.error('Failed to load exercise for editing', error);
+      return renderHxError(res, 500, 'Unable to load exercise');
+    }
+
+    return res.render('exercises/edit-form', {
+      layout: false,
+      exercise: data,
+    });
+  });
+
+  router.put('/:id', async (req, res) => {
+    if (!supabase) {
+      return respond(req, res, 501, 'Supabase not configured');
+    }
+
+    const { payload, error: validationError } = buildExercisePayload(req.body);
+
+    if (validationError) {
+      return respond(req, res, 400, validationError);
+    }
+
+    const { data, error, status } = await supabase
+      .from('exercises')
+      .update(payload)
+      .eq('id', req.params.id)
+      .select()
+      .single();
+
+    if (error) {
+      if (status === 406) {
+        return respond(req, res, 404, 'Exercise not found');
+      }
+
+      console.error('Failed to update exercise', error);
+      return respond(req, res, 500, 'Unable to update exercise');
+    }
+
+    if (req.headers['hx-request']) {
+      return res.render('exercises/update-response', {
+        layout: false,
+        exercise: data,
+      });
+    }
+
+    return res.json({ exercise: data });
+  });
+
+  router.delete('/:id', async (req, res) => {
+    if (!supabase) {
+      return respond(req, res, 501, 'Supabase not configured');
+    }
+
+    const { error, status } = await supabase
+      .from('exercises')
+      .delete()
+      .eq('id', req.params.id);
+
+    if (error) {
+      if (status === 406) {
+        return respond(req, res, 404, 'Exercise not found');
+      }
+
+      console.error('Failed to delete exercise', error);
+      return respond(req, res, 500, 'Unable to delete exercise');
+    }
+
+    if (req.headers['hx-request']) {
+      return res.send('');
+    }
+
+    return res.status(204).end();
+  });
+
+  router.get('/:id', async (req, res) => {
+    if (!supabase) {
+      return res.status(200).json({ exercise: null, message: 'Supabase not configured' });
+    }
+
+    const { data, error, status } = await fetchExerciseById(supabase, req.params.id);
+
+    if (error) {
+      if (status === 406) {
+        return res.status(404).json({ error: 'Exercise not found' });
+      }
+
+      console.error('Failed to load exercise', error);
+      return res.status(500).json({ error: 'Unable to load exercise' });
+    }
+
+    return res.json({ exercise: data });
   });
 
   return router;
@@ -214,4 +279,63 @@ function normalizePositiveInteger(value) {
   }
 
   return parsed;
+}
+
+function buildExercisePayload(body = {}) {
+  const trimmedName = typeof body.name === 'string' ? body.name.trim() : '';
+  if (!trimmedName) {
+    return { error: 'Exercise name is required' };
+  }
+
+  const normalizedVideoUrl = normalizeUrl(body.video_url);
+  if (normalizedVideoUrl === false) {
+    return { error: 'Video link must be a valid URL starting with http or https.' };
+  }
+
+  const targetMuscleValue =
+    typeof body.target_muscle === 'string' && body.target_muscle.trim()
+      ? body.target_muscle
+      : body.primary_muscle;
+  const normalizedTargetMuscle = toNullableString(targetMuscleValue);
+
+  if (!normalizedTargetMuscle) {
+    return { error: 'Target muscle is required' };
+  }
+
+  const repetitionsValue = normalizePositiveInteger(body.target_repetitions);
+  if (repetitionsValue === null) {
+    return { error: 'Target repetitions is required' };
+  }
+  if (repetitionsValue === false) {
+    return { error: 'Target repetitions must be a positive whole number.' };
+  }
+
+  const setsValue = normalizePositiveInteger(body.target_sets);
+  if (setsValue === null) {
+    return { error: 'Target sets is required' };
+  }
+  if (setsValue === false) {
+    return { error: 'Target sets must be a positive whole number.' };
+  }
+
+  return {
+    payload: {
+      name: trimmedName,
+      category: toNullableString(body.category),
+      primary_muscle: toNullableString(body.primary_muscle),
+      target_muscle: normalizedTargetMuscle,
+      target_sets: setsValue,
+      target_repetitions: repetitionsValue,
+      secondary_muscles: toNullableString(body.secondary_muscles),
+      equipment: toNullableString(body.equipment),
+      tempo: toNullableString(body.tempo),
+      notes: toNullableString(body.notes),
+      cues: toNullableString(body.cues),
+      video_url: normalizedVideoUrl,
+    },
+  };
+}
+
+async function fetchExerciseById(supabase, id) {
+  return supabase.from('exercises').select('*').eq('id', id).single();
 }

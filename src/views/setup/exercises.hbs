@@ -196,7 +196,7 @@
 
     <div class="mt-8 space-y-3">
       <div class="flex items-center justify-between">
-        <h3 class="text-sm font-semibold uppercase tracking-wide text-graphite/70 dark:text-fog/60">Library entries</h3>
+        <h3 class="text-sm font-semibold uppercase tracking-wide text-graphite/70 dark:text-fog/60">Exercise Library</h3>
         <button
           type="button"
           class="text-sm font-semibold text-teal hover:text-teal-dark dark:text-orange dark:hover:text-orange-dark"
@@ -231,6 +231,50 @@
   </section>
 </main>
 
+<div
+  id="exercise-delete-modal"
+  class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50 px-4 py-6"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="exercise-delete-title"
+  aria-hidden="true"
+>
+  <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl ring-1 ring-black/10 dark:bg-graphite dark:text-fog dark:ring-white/10">
+    <div class="space-y-4">
+      <header class="space-y-2">
+        <h2 id="exercise-delete-title" class="text-lg font-semibold text-ink dark:text-white">Delete exercise</h2>
+        <p class="text-sm text-graphite/80 dark:text-fog/80">
+          You're about to delete this exercise. This has no undo. Please confirm you want to delete this exercise.
+        </p>
+        <p id="exercise-delete-name" class="text-sm font-semibold text-ink dark:text-white"></p>
+      </header>
+      <div
+        id="exercise-delete-error"
+        class="hidden rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-orange/40 dark:bg-orange/10 dark:text-orange"
+        role="alert"
+      ></div>
+      <form id="exercise-delete-form" class="flex flex-col gap-3">
+        <div class="flex flex-wrap justify-end gap-3">
+          <button
+            type="submit"
+            data-role="confirm-delete"
+            class="inline-flex items-center gap-2 rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 transition hover:border-red-400 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:opacity-60 dark:border-orange/50 dark:text-orange dark:hover:border-orange dark:hover:text-orange/80 dark:focus:ring-orange/40"
+          >
+            Confirm delete
+          </button>
+          <button
+            type="button"
+            data-action="close-delete"
+            class="inline-flex items-center gap-2 rounded-lg border border-graphite/20 px-4 py-2 text-sm font-semibold text-graphite transition hover:border-graphite/40 hover:text-ink focus:outline-none focus:ring-2 focus:ring-graphite/30 dark:border-fog/30 dark:text-fog dark:hover:border-fog/60 dark:hover:text-white dark:focus:ring-fog/30"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <script>
   (() => {
     const trigger = document.getElementById('new-exercise-button');
@@ -238,10 +282,27 @@
     const form = document.getElementById('new-exercise-form');
     const cancel = container ? container.querySelector('[data-action="cancel-exercise"]') : null;
     const messages = document.getElementById('exercise-form-messages');
+    const deleteModal = document.getElementById('exercise-delete-modal');
+    const deleteForm = document.getElementById('exercise-delete-form');
+    const deleteError = document.getElementById('exercise-delete-error');
+    const deleteName = document.getElementById('exercise-delete-name');
+    const confirmDelete = deleteModal ? deleteModal.querySelector('[data-role="confirm-delete"]') : null;
+
+    let deleteTargetId = null;
+    let deleteTriggerButton = null;
+    let deleteTargetName = '';
 
     if (!trigger || !container || !form) {
       return;
     }
+
+    const escapeHtml = (value = '') =>
+      value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 
     const showForm = () => {
       if (trigger.disabled) {
@@ -290,6 +351,141 @@
       cancel.addEventListener('click', (event) => {
         event.preventDefault();
         hideForm({ clearMessages: true });
+      });
+    }
+
+    const closeDeleteModal = () => {
+      if (!deleteModal) {
+        return;
+      }
+
+      deleteModal.classList.add('hidden');
+      deleteModal.setAttribute('aria-hidden', 'true');
+      deleteTargetId = null;
+      deleteTargetName = '';
+
+      if (deleteError) {
+        deleteError.classList.add('hidden');
+        deleteError.textContent = '';
+      }
+
+      if (deleteName) {
+        deleteName.textContent = '';
+      }
+
+      if (confirmDelete) {
+        confirmDelete.disabled = false;
+        confirmDelete.removeAttribute('aria-busy');
+      }
+
+      if (deleteTriggerButton && document.contains(deleteTriggerButton)) {
+        deleteTriggerButton.focus();
+      }
+
+      deleteTriggerButton = null;
+    };
+
+    const showDeleteModal = (exerciseId, triggerButton) => {
+      if (!deleteModal || !confirmDelete || !deleteForm || !exerciseId) {
+        return;
+      }
+
+      deleteTargetId = exerciseId;
+      deleteTriggerButton = triggerButton;
+      deleteTargetName = triggerButton?.getAttribute('data-exercise-name') || '';
+      deleteModal.classList.remove('hidden');
+      deleteModal.setAttribute('aria-hidden', 'false');
+      if (deleteError) {
+        deleteError.classList.add('hidden');
+        deleteError.textContent = '';
+      }
+      if (deleteName) {
+        deleteName.textContent = deleteTargetName;
+      }
+      confirmDelete.focus();
+    };
+
+    document.addEventListener('click', (event) => {
+      const deleteButton = event.target.closest('[data-action="exercise-delete"]');
+      if (deleteButton) {
+        event.preventDefault();
+        const id = deleteButton.getAttribute('data-exercise-id');
+        if (id) {
+          showDeleteModal(id, deleteButton);
+        }
+        return;
+      }
+
+      if (event.target.closest('[data-action="close-delete"]')) {
+        event.preventDefault();
+        closeDeleteModal();
+      }
+    });
+
+    if (deleteModal) {
+      deleteModal.addEventListener('click', (event) => {
+        if (event.target === deleteModal) {
+          closeDeleteModal();
+        }
+      });
+    }
+
+    if (deleteForm && confirmDelete) {
+      deleteForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        if (!deleteTargetId) {
+          return;
+        }
+
+        confirmDelete.disabled = true;
+        confirmDelete.setAttribute('aria-busy', 'true');
+        if (deleteError) {
+          deleteError.classList.add('hidden');
+          deleteError.textContent = '';
+        }
+
+        try {
+          const response = await fetch(`/exercises/${encodeURIComponent(deleteTargetId)}`, {
+            method: 'DELETE',
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error(`Delete failed with status ${response.status}`);
+          }
+
+          const card = document.getElementById(`exercise-${deleteTargetId}`);
+          if (card) {
+            card.remove();
+          }
+
+          if (messages) {
+            messages.innerHTML =
+              `<p class="rounded-lg border border-teal/20 bg-teal/10 px-3 py-2 text-sm text-teal-dark dark:border-orange/40 dark:bg-orange/10 dark:text-orange">${escapeHtml(
+                deleteTargetName || 'Exercise'
+              )} deleted.</p>`;
+          }
+
+          closeDeleteModal();
+        } catch (error) {
+          if (deleteError) {
+            deleteError.textContent = 'Unable to delete exercise. Please try again.';
+            deleteError.classList.remove('hidden');
+          }
+        } finally {
+          confirmDelete.disabled = false;
+          confirmDelete.removeAttribute('aria-busy');
+        }
+      });
+
+      deleteModal?.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closeDeleteModal();
+        }
       });
     }
   })();
