@@ -47,6 +47,23 @@ app.set('view engine', 'hbs');
 
 const supabaseClient = createSupabaseClient();
 
+app.use((req, _res, next) => {
+  if (!req.originalMethod) {
+    req.originalMethod = req.method;
+  }
+
+  const hxMethod = req.get('Hx-Method');
+  if (hxMethod) {
+    req.method = hxMethod.toUpperCase();
+  }
+
+  const override = req.get('X-HTTP-Method-Override');
+  if (!hxMethod && override) {
+    req.method = override.toUpperCase();
+  }
+
+  next();
+});
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));

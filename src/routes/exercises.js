@@ -3,6 +3,22 @@ const express = require('express');
 module.exports = (supabase) => {
   const router = express.Router();
 
+  router.use((req, _res, next) => {
+    if (req.method === 'POST') {
+      const hxMethod = req.get('Hx-Method');
+      if (hxMethod) {
+        req.method = hxMethod.toUpperCase();
+      }
+
+      const override = req.get('X-HTTP-Method-Override');
+      if (!hxMethod && override) {
+        req.method = override.toUpperCase();
+      }
+    }
+
+    next();
+  });
+
   router.get('/fragment', async (_req, res) => {
     if (!supabase) {
       return res.render('exercises/list-fragment', {
@@ -74,7 +90,12 @@ module.exports = (supabase) => {
       return renderHxError(res, 501, 'Supabase not configured');
     }
 
-    const { data, error, status } = await fetchExerciseById(supabase, req.params.id);
+    const { id, error: idError } = parseExerciseId(req.params.id);
+    if (idError) {
+      return renderHxError(res, 400, idError);
+    }
+
+    const { data, error, status } = await fetchExerciseById(supabase, id);
 
     if (error) {
       if (status === 406) {
@@ -83,6 +104,10 @@ module.exports = (supabase) => {
 
       console.error('Failed to load exercise', error);
       return renderHxError(res, 500, 'Unable to load exercise');
+    }
+
+    if (!data) {
+      return renderHxError(res, 404, 'Exercise not found');
     }
 
     return res.render('exercises/item-fragment', {
@@ -96,7 +121,12 @@ module.exports = (supabase) => {
       return renderHxError(res, 501, 'Supabase not configured');
     }
 
-    const { data, error, status } = await fetchExerciseById(supabase, req.params.id);
+    const { id, error: idError } = parseExerciseId(req.params.id);
+    if (idError) {
+      return renderHxError(res, 400, idError);
+    }
+
+    const { data, error, status } = await fetchExerciseById(supabase, id);
 
     if (error) {
       if (status === 406) {
@@ -105,6 +135,10 @@ module.exports = (supabase) => {
 
       console.error('Failed to load exercise for editing', error);
       return renderHxError(res, 500, 'Unable to load exercise');
+    }
+
+    if (!data) {
+      return renderHxError(res, 404, 'Exercise not found');
     }
 
     return res.render('exercises/edit-form', {
@@ -118,36 +152,66 @@ module.exports = (supabase) => {
       return respond(req, res, 501, 'Supabase not configured');
     }
 
+    const { id, error: idError } = parseExerciseId(req.params.id);
+    if (idError) {
+      return respond(req, res, 400, idError);
+    }
+
     const { payload, error: validationError } = buildExercisePayload(req.body);
 
     if (validationError) {
       return respond(req, res, 400, validationError);
     }
 
-    const { data, error, status } = await supabase
+    const { data: updatedRows, error: updateError, status: updateStatus } = await supabase
       .from('exercises')
       .update(payload)
-      .eq('id', req.params.id)
+      .eq('id', id)
       .select()
-      .single();
+      .throwOnError();
 
-    if (error) {
-      if (status === 406) {
+    if (updateError) {
+      if (updateStatus === 406) {
         return respond(req, res, 404, 'Exercise not found');
       }
 
-      console.error('Failed to update exercise', error);
+      console.error('Failed to update exercise', updateError);
       return respond(req, res, 500, 'Unable to update exercise');
+    }
+
+    let exercise = Array.isArray(updatedRows) && updatedRows.length ? updatedRows[0] : null;
+
+    if (!exercise) {
+      const {
+        data: fetched,
+        error: fetchError,
+        status: fetchStatus,
+      } = await fetchExerciseById(supabase, id);
+
+      if (fetchError) {
+        if (fetchStatus === 406) {
+          return respond(req, res, 404, 'Exercise not found');
+        }
+
+        console.error('Failed to load updated exercise', fetchError);
+        return respond(req, res, 500, 'Unable to update exercise');
+      }
+
+      if (!fetched) {
+        return respond(req, res, 404, 'Exercise not found');
+      }
+
+      exercise = fetched;
     }
 
     if (req.headers['hx-request']) {
       return res.render('exercises/update-response', {
         layout: false,
-        exercise: data,
+        exercise,
       });
     }
 
-    return res.json({ exercise: data });
+    return res.json({ exercise });
   });
 
   router.delete('/:id', async (req, res) => {
@@ -155,10 +219,15 @@ module.exports = (supabase) => {
       return respond(req, res, 501, 'Supabase not configured');
     }
 
+    const { id, error: idError } = parseExerciseId(req.params.id);
+    if (idError) {
+      return respond(req, res, 400, idError);
+    }
+
     const { error, status } = await supabase
       .from('exercises')
       .delete()
-      .eq('id', req.params.id);
+      .eq('id', id);
 
     if (error) {
       if (status === 406) {
@@ -181,7 +250,12 @@ module.exports = (supabase) => {
       return res.status(200).json({ exercise: null, message: 'Supabase not configured' });
     }
 
-    const { data, error, status } = await fetchExerciseById(supabase, req.params.id);
+    const { id, error: idError } = parseExerciseId(req.params.id);
+    if (idError) {
+      return res.status(400).json({ error: idError });
+    }
+
+    const { data, error, status } = await fetchExerciseById(supabase, id);
 
     if (error) {
       if (status === 406) {
@@ -190,6 +264,10 @@ module.exports = (supabase) => {
 
       console.error('Failed to load exercise', error);
       return res.status(500).json({ error: 'Unable to load exercise' });
+    }
+
+    if (!data) {
+      return res.status(404).json({ error: 'Exercise not found' });
     }
 
     return res.json({ exercise: data });
@@ -337,5 +415,19 @@ function buildExercisePayload(body = {}) {
 }
 
 async function fetchExerciseById(supabase, id) {
-  return supabase.from('exercises').select('*').eq('id', id).single();
+  return supabase.from('exercises').select('*').eq('id', id).maybeSingle();
+}
+
+function parseExerciseId(param = '') {
+  const trimmed = String(param ?? '').trim();
+  if (!trimmed) {
+    return { error: 'Invalid exercise id' };
+  }
+
+  const asNumber = Number.parseInt(trimmed, 10);
+  if (!Number.isNaN(asNumber) && String(asNumber) === trimmed) {
+    return { id: asNumber };
+  }
+
+  return { id: trimmed };
 }
