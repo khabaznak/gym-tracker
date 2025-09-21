@@ -1,9 +1,82 @@
-<article class="flex flex-col gap-1 rounded-lg border border-graphite/15 bg-white p-4 shadow-sm transition hover:border-teal dark:border-fog/10 dark:bg-graphite dark:hover:border-orange">
-  <div class="flex items-baseline justify-between">
-    <h3 class="text-lg font-semibold text-ink dark:text-white">{{workout.name}}</h3>
-    <time class="text-xs uppercase tracking-wide text-graphite/60 dark:text-fog/60">{{formatDate workout.performed_at}}</time>
-  </div>
-  {{#if workout.notes}}
-    <p class="text-sm text-graphite/80 dark:text-fog/70">{{workout.notes}}</p>
-  {{/if}}
-</article>
+{{#with workout}}
+  <article
+    id="workout-{{id}}"
+    class="rounded-lg border border-graphite/10 bg-white p-4 text-sm text-graphite/80 shadow-sm transition hover:border-teal dark:border-fog/15 dark:bg-graphite dark:text-fog/80 dark:hover:border-orange"
+  >
+    <div class="flex flex-col gap-3">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="space-y-1">
+          <h3 class="text-base font-semibold text-ink dark:text-white">{{name}}</h3>
+          {{#if performed_at}}
+            <time datetime="{{performed_at}}" class="block text-xs text-graphite/60 dark:text-fog/60">Scheduled {{formatDate performed_at}}</time>
+          {{/if}}
+        </div>
+        {{#if ../manageable}}
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 rounded-lg border border-graphite/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-graphite transition hover:border-graphite/40 hover:text-ink focus:outline-none focus:ring-2 focus:ring-graphite/30 dark:border-fog/30 dark:text-fog dark:hover:border-fog/60 dark:hover:text-white dark:focus:ring-fog/30"
+              hx-get="/workouts/{{id}}/edit"
+              hx-target="#workout-{{id}}"
+              hx-swap="outerHTML"
+              aria-label="Edit {{name}}"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 3.487a2.25 2.25 0 1 1 3.182 3.182L7.125 19.589 3 21l1.411-4.125L16.862 3.487z" />
+              </svg>
+              Edit
+            </button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-red-600 transition hover:border-red-400 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-200 dark:border-orange/50 dark:text-orange dark:hover:border-orange dark:hover:text-orange/80 dark:focus:ring-orange/30"
+              data-action="delete-workout"
+              data-workout-id="{{id}}"
+              data-workout-name="{{name}}"
+            >
+              Delete
+            </button>
+          </div>
+        {{/if}}
+      </div>
+
+      {{#if description}}
+        <p class="leading-relaxed text-graphite/80 dark:text-fog/80 whitespace-pre-line">{{description}}</p>
+      {{/if}}
+
+      {{#if notes}}
+        <p class="rounded-lg bg-fog/70 px-3 py-2 text-sm text-graphite/80 shadow-sm dark:bg-ink/50 dark:text-fog/80 whitespace-pre-line">{{notes}}</p>
+      {{/if}}
+
+      {{#if rest_interval}}
+        <p class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Rest: {{rest_interval}}</p>
+      {{/if}}
+
+      {{#if video_url}}
+        <a
+          href="{{video_url}}"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2 text-sm font-semibold text-teal hover:text-teal-dark dark:text-orange dark:hover:text-orange-dark"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6A2.25 2.25 0 0 0 5.25 5.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l6-6m0 0v4.5M18 3h-4.5" />
+          </svg>
+          Watch preview
+        </a>
+      {{/if}}
+
+      {{#if exercises.length}}
+        <div class="space-y-1">
+          <p class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Exercises</p>
+          <ul class="flex flex-wrap gap-2">
+            {{#each exercises}}
+              <li class="rounded-full border border-graphite/15 px-3 py-1 text-xs text-graphite/70 dark:border-fog/20 dark:text-fog/70">
+                {{name}}{{#if category}} · {{category}}{{/if}}
+              </li>
+            {{/each}}
+          </ul>
+        </div>
+      {{/if}}
+    </div>
+  </article>
+{{/with}}

@@ -38,6 +38,31 @@ app.engine(
       eq(left, right) {
         return left === right;
       },
+      includes(collection, value) {
+        if (!Array.isArray(collection)) {
+          return false;
+        }
+
+        const needle = String(value);
+        return collection.some((item) => String(item) === needle);
+      },
+      toDateTimeLocal(value) {
+        if (!value) {
+          return '';
+        }
+
+        try {
+          const date = new Date(value);
+          if (Number.isNaN(date.getTime())) {
+            return '';
+          }
+
+          const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+          return offsetDate.toISOString().slice(0, 16);
+        } catch (_error) {
+          return '';
+        }
+      },
     },
   })
 );
@@ -72,7 +97,8 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-const workoutsRouter = require('./routes/workouts')(supabaseClient);
+const workoutsModule = require('./routes/workouts');
+const workoutsRouter = workoutsModule.createRouter(supabaseClient);
 const exercisesRouter = require('./routes/exercises')(supabaseClient);
 
 app.use('/workouts', workoutsRouter);
@@ -118,16 +144,34 @@ app.get('/setup/exercises', async (_req, res) => {
 
 app.get('/setup/workouts', async (_req, res) => {
   const supabaseReady = Boolean(supabaseClient);
-  const { workouts, error } = await fetchRecentWorkouts(supabaseClient);
+  let workouts = [];
+  let exercises = [];
 
-  if (error) {
-    console.error('Failed to load workouts for setup view', error);
+  if (supabaseClient) {
+    const [{ workouts: hydratedWorkouts, error: workoutsError }, { exercises: exerciseOptions, error: exercisesError }]
+      = await Promise.all([
+        workoutsModule.fetchWorkouts(supabaseClient, { limit: 50 }),
+        workoutsModule.fetchExercisesForSelection(supabaseClient),
+      ]);
+
+    if (workoutsError) {
+      console.error('Failed to load workouts for setup view', workoutsError);
+    } else {
+      workouts = hydratedWorkouts;
+    }
+
+    if (exercisesError) {
+      console.error('Failed to load exercises for workout form', exercisesError);
+    } else {
+      exercises = exerciseOptions;
+    }
   }
 
   res.render('setup/workouts', {
     pageTitle: 'Manage Workouts',
     supabaseReady,
     workouts,
+    exercises,
     activeNav: 'setup-workouts',
   });
 });

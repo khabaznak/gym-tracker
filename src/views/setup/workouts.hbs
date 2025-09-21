@@ -4,30 +4,433 @@
   <section class="rounded-xl bg-white p-6 shadow-lg ring-1 ring-graphite/10 dark:bg-graphite dark:text-fog dark:ring-graphite/40">
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div>
-        <h2 class="text-lg font-semibold text-ink dark:text-white">Workout templates</h2>
-        <p class="mt-1 text-sm text-graphite/70 dark:text-fog/70">Bundle exercises, set objectives, and publish sessions to your athletes.</p>
+        <h2 class="text-lg font-semibold text-ink dark:text-white">Workout library</h2>
+        <p class="mt-1 text-sm text-graphite/70 dark:text-fog/70">Describe templates, assign exercises, and share guidance with your athletes.</p>
       </div>
-      <a
-        href="#"
-        class="inline-flex items-center gap-2 rounded-lg bg-teal px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-dark focus:outline-none focus:ring-2 focus:ring-teal/40 dark:bg-orange dark:hover:bg-orange-dark dark:focus:ring-orange/40"
+      <button
+        type="button"
+        id="new-workout-button"
+        class="inline-flex items-center gap-2 rounded-lg bg-teal px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-dark focus:outline-none focus:ring-2 focus:ring-teal/40 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-orange dark:hover:bg-orange-dark dark:focus:ring-orange/40"
+        {{#unless supabaseReady}}disabled aria-disabled="true"{{/unless}}
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
         </svg>
         New workout
-      </a>
+      </button>
     </div>
 
-    <div class="mt-6 space-y-3">
-      {{> workouts/list workouts=workouts supabaseReady=supabaseReady}}
+    <div id="workout-form-messages" class="mt-6 text-sm text-graphite/70 dark:text-fog/70" role="status"></div>
+
+    <div id="new-workout-form-container" class="mt-6 hidden" aria-hidden="true">
+      <form
+        id="new-workout-form"
+        class="space-y-4 rounded-lg border border-graphite/10 bg-fog/60 p-4 shadow-sm dark:border-fog/15 dark:bg-graphite/60"
+        hx-post="/workouts"
+        hx-target="#workout-form-messages"
+        hx-swap="innerHTML"
+        hx-on="htmx:afterSwap: if (event.detail.xhr.status === 201) { this.reset(); document.dispatchEvent(new CustomEvent('workout-form:saved')); }"
+      >
+        <fieldset class="grid gap-4 md:grid-cols-2" {{#unless supabaseReady}}disabled{{/unless}}>
+          <div class="flex flex-col gap-2">
+            <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="workout-name">Workout name<span class="text-orange">*</span></label>
+            <input
+              id="workout-name"
+              name="name"
+              type="text"
+              placeholder="Full Body Primer"
+              required
+              class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
+            />
+          </div>
+          <div class="flex flex-col gap-2">
+            <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="workout-performed">Session date (optional)</label>
+            <input
+              id="workout-performed"
+              name="performed_at"
+              type="datetime-local"
+              class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:focus:border-teal dark:focus:ring-teal/40"
+            />
+          </div>
+          <div class="md:col-span-2 flex flex-col gap-2">
+            <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="workout-description">Description</label>
+            <textarea
+              id="workout-description"
+              name="description"
+              rows="3"
+              placeholder="Warm-up + strength tri-set focused on posterior chain."
+              class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
+            ></textarea>
+          </div>
+          <div class="md:col-span-2 flex flex-col gap-2">
+            <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="workout-notes">Notes</label>
+            <textarea
+              id="workout-notes"
+              name="notes"
+              rows="3"
+              placeholder="Coaching cues, load targets, or athlete reminders."
+              class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
+            ></textarea>
+          </div>
+          <div class="flex flex-col gap-2">
+            <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="workout-video">Video link</label>
+            <input
+              id="workout-video"
+              name="video_url"
+              type="url"
+              placeholder="https://example.com/session"
+              class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
+            />
+          </div>
+          <div class="flex flex-col gap-2">
+            <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="workout-rest">Rest interval</label>
+            <input
+              id="workout-rest"
+              name="rest_interval"
+              type="text"
+              placeholder="60 seconds between rounds"
+              class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
+            />
+          </div>
+          <div class="md:col-span-2 flex flex-col gap-2">
+            <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="workout-exercises">Exercises</label>
+            <select
+              id="workout-exercises"
+              name="exercise_ids"
+              multiple
+              size="6"
+              class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:focus:border-teal dark:focus:ring-teal/40"
+            >
+              {{#if exercises.length}}
+                {{#each exercises}}
+                  <option value="{{id}}">{{name}}{{#if category}} · {{category}}{{/if}}</option>
+                {{/each}}
+              {{else}}
+                <option disabled>No exercises available yet</option>
+              {{/if}}
+            </select>
+            <p class="text-xs text-graphite/60 dark:text-fog/60">Hold Command (⌘) on Mac or Ctrl on Windows to select multiple exercises.</p>
+          </div>
+        </fieldset>
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div class="flex items-center gap-3">
+            <button
+              type="submit"
+              class="inline-flex items-center gap-2 rounded-lg bg-teal px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-dark focus:outline-none focus:ring-2 focus:ring-teal/40 dark:bg-orange dark:hover:bg-orange-dark dark:focus:ring-orange/40"
+              {{#unless supabaseReady}}disabled{{/unless}}
+            >
+              Save workout
+            </button>
+            <button
+              type="button"
+              data-action="cancel-workout"
+              class="inline-flex items-center gap-2 rounded-lg border border-graphite/20 px-4 py-2 text-sm font-semibold text-graphite transition hover:border-graphite/40 hover:text-ink focus:outline-none focus:ring-2 focus:ring-graphite/30 dark:border-fog/30 dark:text-fog dark:hover:border-fog/60 dark:hover:text-white dark:focus:ring-fog/30"
+            >
+              Cancel
+            </button>
+            <span class="htmx-indicator text-sm text-graphite/70 dark:text-fog/70">Saving…</span>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="mt-8 space-y-3">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold uppercase tracking-wide text-graphite/70 dark:text-fog/60">Workout Library</h3>
+        <button
+          type="button"
+          class="text-sm font-semibold text-teal hover:text-teal-dark dark:text-orange dark:hover:text-orange-dark"
+          hx-get="/workouts/fragment?mode=manage"
+          hx-target="#workout-library"
+          hx-swap="innerHTML"
+          {{#unless supabaseReady}}disabled{{/unless}}
+        >
+          Refresh
+        </button>
+      </div>
+      <div
+        class="space-y-3"
+        id="workout-library"
+        {{#if supabaseReady}}
+          hx-get="/workouts/fragment?mode=manage"
+          hx-trigger="load"
+          hx-swap="innerHTML"
+        {{/if}}
+      >
+        {{> workouts/list workouts=workouts supabaseReady=supabaseReady manageable=true}}
+      </div>
     </div>
   </section>
 
   <section class="rounded-xl border border-dashed border-graphite/20 bg-white/40 p-6 text-sm text-graphite/70 dark:border-fog/30 dark:bg-graphite/50 dark:text-fog/70">
     {{#if supabaseReady}}
-      <p>Hook this screen into Supabase by extending the workouts router with update/delete operations and exposing the <code class="rounded bg-graphite/10 px-1 py-0.5 text-xs text-graphite dark:bg-ink dark:text-fog">workout_exercises</code> join table. From there you can drive drag-and-drop or form-based editors.</p>
+      <p>Every workout you create syncs straight to Supabase. Attach exercises from your library, capture rest intervals, and share support videos to keep athletes on track.</p>
     {{else}}
-      <p>Once Supabase credentials are configured, you can manage saved sessions here. Use the sidebar to jump back to the dashboard anytime.</p>
+      <p>Once Supabase credentials are configured, you can build and manage workouts here. Use the sidebar to jump back to the dashboard anytime.</p>
     {{/if}}
   </section>
 </main>
+
+<div
+  id="workout-delete-modal"
+  class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50 px-4 py-6"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="workout-delete-title"
+  aria-hidden="true"
+>
+  <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl ring-1 ring-black/10 dark:bg-graphite dark:text-fog dark:ring-white/10">
+    <div class="space-y-4">
+      <header class="space-y-2">
+        <h2 id="workout-delete-title" class="text-lg font-semibold text-ink dark:text-white">Delete workout</h2>
+        <p class="text-sm text-graphite/80 dark:text-fog/80">
+          You're about to delete this workout. This has no undo. Please confirm you want to delete this workout.
+        </p>
+        <p id="workout-delete-name" class="text-sm font-semibold text-ink dark:text-white"></p>
+      </header>
+      <div
+        id="workout-delete-error"
+        class="hidden rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-orange/40 dark:bg-orange/10 dark:text-orange"
+        role="alert"
+      ></div>
+      <form id="workout-delete-form" class="flex flex-col gap-3">
+        <div class="flex flex-wrap justify-end gap-3">
+          <button
+            type="submit"
+            data-role="confirm-delete"
+            class="inline-flex items-center gap-2 rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 transition hover:border-red-400 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:opacity-60 dark:border-orange/50 dark:text-orange dark:hover:border-orange dark:hover:text-orange/80 dark:focus:ring-orange/40"
+          >
+            Confirm delete
+          </button>
+          <button
+            type="button"
+            data-action="close-delete"
+            class="inline-flex items-center gap-2 rounded-lg border border-graphite/20 px-4 py-2 text-sm font-semibold text-graphite transition hover:border-graphite/40 hover:text-ink focus:outline-none focus:ring-2 focus:ring-graphite/30 dark:border-fog/30 dark:text-fog dark:hover:border-fog/60 dark:hover:text-white dark:focus:ring-fog/30"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  (() => {
+    const newButton = document.getElementById('new-workout-button');
+    const formContainer = document.getElementById('new-workout-form-container');
+    const form = document.getElementById('new-workout-form');
+    const cancelBtn = formContainer ? formContainer.querySelector('[data-action="cancel-workout"]') : null;
+    const messages = document.getElementById('workout-form-messages');
+    const modal = document.getElementById('workout-delete-modal');
+    const modalForm = document.getElementById('workout-delete-form');
+    const modalError = document.getElementById('workout-delete-error');
+    const modalName = document.getElementById('workout-delete-name');
+    const confirmDelete = modal ? modal.querySelector('[data-role="confirm-delete"]') : null;
+
+    if (!newButton || !formContainer || !form) {
+      return;
+    }
+
+    let deleteWorkoutId = null;
+    let deleteSourceButton = null;
+    let deleteWorkoutName = '';
+
+    const escapeHtml = (value = '') =>
+      value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
+    const showForm = () => {
+      if (newButton.disabled) {
+        return;
+      }
+
+      formContainer.classList.remove('hidden');
+      formContainer.setAttribute('aria-hidden', 'false');
+      newButton.classList.add('hidden');
+
+      if (messages) {
+        messages.innerHTML = '';
+      }
+
+      window.requestAnimationFrame(() => {
+        const focusTarget = form.querySelector('input[name="name"]');
+        if (focusTarget) {
+          focusTarget.focus();
+        }
+      });
+    };
+
+    const hideForm = ({ clearMessages = false } = {}) => {
+      formContainer.classList.add('hidden');
+      formContainer.setAttribute('aria-hidden', 'true');
+      form.reset();
+
+      if (clearMessages && messages) {
+        messages.innerHTML = '';
+      }
+
+      newButton.classList.remove('hidden');
+      newButton.focus();
+    };
+
+    const closeModal = () => {
+      if (!modal) {
+        return;
+      }
+
+      modal.classList.add('hidden');
+      modal.setAttribute('aria-hidden', 'true');
+      deleteWorkoutId = null;
+      deleteWorkoutName = '';
+
+      if (modalError) {
+        modalError.classList.add('hidden');
+        modalError.textContent = '';
+      }
+
+      if (modalName) {
+        modalName.textContent = '';
+      }
+
+      if (confirmDelete) {
+        confirmDelete.disabled = false;
+        confirmDelete.removeAttribute('aria-busy');
+      }
+
+      if (deleteSourceButton && document.contains(deleteSourceButton)) {
+        deleteSourceButton.focus();
+      }
+
+      deleteSourceButton = null;
+    };
+
+    const showModal = (workoutId, trigger) => {
+      if (!modal || !confirmDelete || !modalForm || !workoutId) {
+        return;
+      }
+
+      deleteWorkoutId = workoutId;
+      deleteSourceButton = trigger;
+      deleteWorkoutName = trigger?.getAttribute('data-workout-name') || '';
+      modal.classList.remove('hidden');
+      modal.setAttribute('aria-hidden', 'false');
+
+      if (modalError) {
+        modalError.classList.add('hidden');
+        modalError.textContent = '';
+      }
+
+      if (modalName) {
+        modalName.textContent = deleteWorkoutName;
+      }
+
+      confirmDelete.focus();
+    };
+
+    newButton.addEventListener('click', (event) => {
+      event.preventDefault();
+      showForm();
+    });
+
+    document.addEventListener('workout-form:saved', () => {
+      hideForm({ clearMessages: false });
+    });
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', (event) => {
+        event.preventDefault();
+        hideForm({ clearMessages: true });
+      });
+    }
+
+    document.addEventListener('click', (event) => {
+      const deleteButton = event.target.closest('[data-action="delete-workout"]');
+      if (deleteButton) {
+        event.preventDefault();
+        const workoutId = deleteButton.getAttribute('data-workout-id');
+        if (workoutId) {
+          showModal(workoutId, deleteButton);
+        }
+        return;
+      }
+
+      if (event.target.closest('[data-action="close-delete"]')) {
+        event.preventDefault();
+        closeModal();
+      }
+    });
+
+    if (modal) {
+      modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+          closeModal();
+        }
+      });
+
+      modal.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closeModal();
+        }
+      });
+    }
+
+    if (modalForm && confirmDelete) {
+      modalForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        if (!deleteWorkoutId) {
+          return;
+        }
+
+        confirmDelete.disabled = true;
+        confirmDelete.setAttribute('aria-busy', 'true');
+
+        if (modalError) {
+          modalError.classList.add('hidden');
+          modalError.textContent = '';
+        }
+
+        try {
+          const response = await fetch(`/workouts/${encodeURIComponent(deleteWorkoutId)}`, {
+            method: 'DELETE',
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error(`Delete failed with status ${response.status}`);
+          }
+
+          const card = document.getElementById(`workout-${deleteWorkoutId}`);
+          if (card) {
+            card.remove();
+          }
+
+          if (messages) {
+            const workoutName = deleteWorkoutName || 'Workout';
+            messages.innerHTML = `<p class="rounded-lg border border-teal/20 bg-teal/10 px-3 py-2 text-sm text-teal-dark dark:border-orange/40 dark:bg-orange/10 dark:text-orange">${escapeHtml(
+              workoutName
+            )} deleted.</p>`;
+          }
+
+          closeModal();
+        } catch (_error) {
+          if (modalError) {
+            modalError.textContent = 'Unable to delete workout. Please try again.';
+            modalError.classList.remove('hidden');
+          }
+        } finally {
+          confirmDelete.disabled = false;
+          confirmDelete.removeAttribute('aria-busy');
+        }
+      });
+    }
+  })();
+</script>
