@@ -79,24 +79,60 @@
             class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:focus:border-teal dark:focus:ring-teal/40"
           />
         </div>
-        <div class="md:col-span-2 flex flex-col gap-2">
-          <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="edit-workout-exercises-{{id}}">Exercises</label>
-          <select
-            id="edit-workout-exercises-{{id}}"
-            name="exercise_ids"
-            multiple
-            size="6"
-            class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:focus:border-teal dark:focus:ring-teal/40"
-          >
-            {{#if ../exercises.length}}
-              {{#each ../exercises}}
-                <option value="{{id}}" {{#if (includes ../exercise_ids id)}}selected{{/if}}>{{name}}{{#if category}} · {{category}}{{/if}}</option>
-              {{/each}}
-            {{else}}
-              <option disabled>No exercises available yet</option>
-            {{/if}}
-          </select>
-          <p class="text-xs text-graphite/60 dark:text-fog/60">Hold Command (⌘) on Mac or Ctrl on Windows to adjust selections.</p>
+        <div class="md:col-span-2 flex flex-col gap-2" data-workout-picker>
+          <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="edit-workout-available-{{id}}">Exercises</label>
+          <div class="grid gap-4 md:grid-cols-2">
+            <div class="flex flex-col gap-2">
+              <span class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Available</span>
+              <select
+                id="edit-workout-available-{{id}}"
+                data-role="exercise-available"
+                size="8"
+                class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:focus:border-teal dark:focus:ring-teal/40"
+              >
+                {{#if @root.exercises.length}}
+                  {{#each @root.exercises}}
+                    <option value="{{id}}" {{#if (includes ../exercise_ids id)}}disabled{{/if}}>{{name}}{{#if category}} · {{category}}{{/if}}</option>
+                  {{/each}}
+                {{else}}
+                  <option disabled data-static-disabled="true">No exercises available yet</option>
+                {{/if}}
+              </select>
+            </div>
+            <div class="flex flex-col gap-2">
+              <span class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Selected</span>
+              <select
+                data-role="exercise-selected"
+                name="exercise_ids"
+                multiple
+                size="8"
+                class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:focus:border-teal dark:focus:ring-teal/40"
+              >
+                {{#if exercises.length}}
+                  {{#each exercises}}
+                    <option value="{{id}}" selected>{{name}}{{#if category}} · {{category}}{{/if}}</option>
+                  {{/each}}
+                {{/if}}
+              </select>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button
+              type="button"
+              data-action="exercise-add"
+              class="inline-flex items-center gap-2 rounded-lg border border-graphite/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-graphite transition hover:border-graphite/40 hover:text-ink focus:outline-none focus:ring-2 focus:ring-graphite/30 dark:border-fog/30 dark:text-fog dark:hover:border-fog/60 dark:hover:text-white dark:focus:ring-fog/30"
+            >
+              Add exercise
+            </button>
+            <button
+              type="button"
+              data-action="exercise-remove"
+              class="inline-flex items-center gap-2 rounded-lg border border-graphite/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-graphite transition hover:border-graphite/40 hover:text-ink focus:outline-none focus:ring-2 focus:ring-graphite/30 dark:border-fog/30 dark:text-fog dark:hover:border-fog/60 dark:hover:text-white dark:focus:ring-fog/30"
+            >
+              Remove selected
+            </button>
+          </div>
+          <p class="text-xs text-graphite/60 dark:text-fog/60">Use the buttons to adjust the exercise order for this workout.</p>
         </div>
       </fieldset>
 

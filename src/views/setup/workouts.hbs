@@ -92,24 +92,54 @@
               class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
             />
           </div>
-          <div class="md:col-span-2 flex flex-col gap-2">
-            <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="workout-exercises">Exercises</label>
-            <select
-              id="workout-exercises"
-              name="exercise_ids"
-              multiple
-              size="6"
-              class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:focus:border-teal dark:focus:ring-teal/40"
-            >
-              {{#if exercises.length}}
-                {{#each exercises}}
-                  <option value="{{id}}">{{name}}{{#if category}} · {{category}}{{/if}}</option>
-                {{/each}}
-              {{else}}
-                <option disabled>No exercises available yet</option>
-              {{/if}}
-            </select>
-            <p class="text-xs text-graphite/60 dark:text-fog/60">Hold Command (⌘) on Mac or Ctrl on Windows to select multiple exercises.</p>
+          <div class="md:col-span-2 flex flex-col gap-2" data-workout-picker>
+            <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="workout-available-exercises">Exercises</label>
+            <div class="grid gap-4 md:grid-cols-2">
+              <div class="flex flex-col gap-2">
+                <span class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Available</span>
+                <select
+                  id="workout-available-exercises"
+                  data-role="exercise-available"
+                  size="8"
+                  class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:focus:border-teal dark:focus:ring-teal/40"
+                >
+                  {{#if exercises.length}}
+                    {{#each exercises}}
+                      <option value="{{id}}">{{name}}{{#if category}} · {{category}}{{/if}}</option>
+                    {{/each}}
+                  {{else}}
+                    <option disabled data-static-disabled="true">No exercises available yet</option>
+                  {{/if}}
+                </select>
+              </div>
+              <div class="flex flex-col gap-2">
+                <span class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Selected</span>
+                <select
+                  data-role="exercise-selected"
+                  name="exercise_ids"
+                  multiple
+                  size="8"
+                  class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:focus:border-teal dark:focus:ring-teal/40"
+                ></select>
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button
+                type="button"
+                data-action="exercise-add"
+                class="inline-flex items-center gap-2 rounded-lg border border-graphite/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-graphite transition hover:border-graphite/40 hover:text-ink focus:outline-none focus:ring-2 focus:ring-graphite/30 dark:border-fog/30 dark:text-fog dark:hover:border-fog/60 dark:hover:text-white dark:focus:ring-fog/30"
+              >
+                Add exercise
+              </button>
+              <button
+                type="button"
+                data-action="exercise-remove"
+                class="inline-flex items-center gap-2 rounded-lg border border-graphite/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-graphite transition hover:border-graphite/40 hover:text-ink focus:outline-none focus:ring-2 focus:ring-graphite/30 dark:border-fog/30 dark:text-fog dark:hover:border-fog/60 dark:hover:text-white dark:focus:ring-fog/30"
+              >
+                Remove selected
+              </button>
+            </div>
+            <p class="text-xs text-graphite/60 dark:text-fog/60">Use the buttons to curate the exercise list in the order you need.</p>
           </div>
         </fieldset>
         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -217,6 +247,133 @@
 
 <script>
   (() => {
+    const pickerSelector = '[data-workout-picker]';
+
+    const escapeHtml = (value = '') =>
+      value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
+    const setupPicker = (container) => {
+      const available = container.querySelector('[data-role="exercise-available"]');
+      const selected = container.querySelector('[data-role="exercise-selected"]');
+      const addBtn = container.querySelector('[data-action="exercise-add"]');
+      const removeBtn = container.querySelector('[data-action="exercise-remove"]');
+
+      if (!available || !selected || !addBtn || !removeBtn) {
+        return;
+      }
+
+      const ensureSelectionState = () => {
+        const selectedValues = new Set(Array.from(selected.options).map((option) => {
+          option.selected = true;
+          return option.value;
+        }));
+
+        Array.from(available.options).forEach((option) => {
+          if (option.dataset.staticDisabled === 'true') {
+            return;
+          }
+
+          option.disabled = selectedValues.has(option.value);
+          option.selected = false;
+        });
+      };
+
+      const moveToSelected = () => {
+        const options = Array.from(available.selectedOptions);
+
+        options.forEach((option) => {
+          const value = option.value;
+          if (!value) {
+            return;
+          }
+
+          const exists = Array.from(selected.options).some((existing) => existing.value === value);
+          if (exists) {
+            option.selected = false;
+            return;
+          }
+
+          const clone = option.cloneNode(true);
+          clone.selected = true;
+          selected.appendChild(clone);
+          if (option.dataset.staticDisabled !== 'true') {
+            option.disabled = true;
+          }
+          option.selected = false;
+        });
+
+        ensureSelectionState();
+      };
+
+      const moveToAvailable = () => {
+        const options = Array.from(selected.selectedOptions);
+
+        options.forEach((option) => {
+          const value = option.value;
+          selected.removeChild(option);
+          const match = Array.from(available.options).find((candidate) => candidate.value === value);
+          if (match && match.dataset.staticDisabled !== 'true') {
+            match.disabled = false;
+            match.selected = false;
+          }
+        });
+
+        ensureSelectionState();
+      };
+
+      if (!container.dataset.pickerInitialized) {
+        addBtn.addEventListener('click', (event) => {
+          event.preventDefault();
+          moveToSelected();
+        });
+
+        removeBtn.addEventListener('click', (event) => {
+          event.preventDefault();
+          moveToAvailable();
+        });
+
+        container.dataset.pickerInitialized = 'true';
+      }
+
+      ensureSelectionState();
+    };
+
+    const resetPicker = (container) => {
+      const available = container.querySelector('[data-role="exercise-available"]');
+      const selected = container.querySelector('[data-role="exercise-selected"]');
+      if (!available || !selected) {
+        return;
+      }
+
+      Array.from(available.options).forEach((option) => {
+        if (option.dataset.staticDisabled === 'true') {
+          return;
+        }
+        option.disabled = false;
+        option.selected = false;
+      });
+
+      selected.innerHTML = '';
+    };
+
+    const setupAllPickers = (root = document) => {
+      root.querySelectorAll(pickerSelector).forEach((picker) => {
+        setupPicker(picker);
+      });
+    };
+
+    const resetAllPickers = (root = document) => {
+      root.querySelectorAll(pickerSelector).forEach((picker) => {
+        resetPicker(picker);
+        setupPicker(picker);
+      });
+    };
+
     const newButton = document.getElementById('new-workout-button');
     const formContainer = document.getElementById('new-workout-form-container');
     const form = document.getElementById('new-workout-form');
@@ -228,24 +385,14 @@
     const modalName = document.getElementById('workout-delete-name');
     const confirmDelete = modal ? modal.querySelector('[data-role="confirm-delete"]') : null;
 
-    if (!newButton || !formContainer || !form) {
-      return;
-    }
+    setupAllPickers(document);
 
     let deleteWorkoutId = null;
     let deleteSourceButton = null;
     let deleteWorkoutName = '';
 
-    const escapeHtml = (value = '') =>
-      value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-
     const showForm = () => {
-      if (newButton.disabled) {
+      if (!newButton || !formContainer || !form || newButton.disabled) {
         return;
       }
 
@@ -257,6 +404,8 @@
         messages.innerHTML = '';
       }
 
+      resetAllPickers(formContainer);
+
       window.requestAnimationFrame(() => {
         const focusTarget = form.querySelector('input[name="name"]');
         if (focusTarget) {
@@ -266,9 +415,14 @@
     };
 
     const hideForm = ({ clearMessages = false } = {}) => {
+      if (!formContainer || !form || !newButton) {
+        return;
+      }
+
       formContainer.classList.add('hidden');
       formContainer.setAttribute('aria-hidden', 'true');
       form.reset();
+      resetAllPickers(formContainer);
 
       if (clearMessages && messages) {
         messages.innerHTML = '';
@@ -332,10 +486,12 @@
       confirmDelete.focus();
     };
 
-    newButton.addEventListener('click', (event) => {
-      event.preventDefault();
-      showForm();
-    });
+    if (newButton) {
+      newButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        showForm();
+      });
+    }
 
     document.addEventListener('workout-form:saved', () => {
       hideForm({ clearMessages: false });
@@ -432,5 +588,9 @@
         }
       });
     }
+
+    document.body.addEventListener('htmx:afterSwap', (event) => {
+      setupAllPickers(event.target);
+    });
   })();
 </script>

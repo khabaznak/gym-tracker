@@ -164,7 +164,7 @@ function createRouter(supabase) {
       return respond(req, res, 501, 'Supabase not configured');
     }
 
-    const { payload, error } = buildWorkoutPayload(req.body);
+    const { payload, exerciseIds, error } = buildWorkoutPayload(req.body);
 
     if (error) {
       return respond(req, res, 400, error);
@@ -179,6 +179,13 @@ function createRouter(supabase) {
     if (insertError) {
       console.error('Failed to create workout', insertError);
       return respond(req, res, 500, 'Unable to create workout');
+    }
+
+    const joinError = await replaceWorkoutExercises(supabase, data.id, exerciseIds, { skipDelete: true });
+
+    if (joinError) {
+      console.error('Failed to link exercises to workout', joinError);
+      return respond(req, res, 500, 'Unable to link exercises to workout');
     }
 
     const { workout } = await hydrateWorkouts(supabase, [data]);
@@ -204,7 +211,7 @@ function createRouter(supabase) {
       return respond(req, res, 400, idError);
     }
 
-    const { payload, error: validationError } = buildWorkoutPayload(req.body);
+    const { payload, exerciseIds, error: validationError } = buildWorkoutPayload(req.body);
 
     if (validationError) {
       return respond(req, res, 400, validationError);
@@ -253,6 +260,13 @@ function createRouter(supabase) {
       if (!workout) {
         return respond(req, res, 404, 'Workout not found');
       }
+    }
+
+    const joinError = await replaceWorkoutExercises(supabase, workout.id, exerciseIds);
+
+    if (joinError) {
+      console.error('Failed to relink exercises to workout', joinError);
+      return respond(req, res, 500, 'Unable to update workout exercises');
     }
 
     const hydrated = (await hydrateWorkouts(supabase, [workout])).workout || workout;
@@ -313,6 +327,7 @@ async function fetchWorkouts(supabase, { limit = 20 } = {}) {
     .from('workouts')
     .select('*')
     .order('performed_at', { ascending: false, nullsLast: false })
+    .order('created_at', { ascending: false })
     .limit(limit);
 
   if (error) {
@@ -357,42 +372,85 @@ async function fetchExercisesForSelection(supabase) {
 }
 
 async function hydrateWorkouts(supabase, input) {
-  const workouts = Array.isArray(input) ? [...input] : [];
+  const workouts = Array.isArray(input) ? input.map((workout) => ({ ...workout })) : [];
 
-  const idSet = new Set();
-  const normalizedWorkouts = workouts.map((workout) => {
-    const exerciseIds = normalizeExerciseIds(workout.exercise_ids);
-    exerciseIds.forEach((value) => idSet.add(value));
+  if (!workouts.length) {
+    workouts.forEach((workout) => {
+      workout.exercise_ids = [];
+      workout.exercises = [];
+    });
 
-    return {
-      ...workout,
-      exercise_ids: exerciseIds,
-    };
-  });
+    return { workouts, workout: workouts[0] };
+  }
 
-  let exerciseMap = new Map();
+  if (!supabase) {
+    workouts.forEach((workout) => {
+      workout.exercise_ids = Array.isArray(workout.exercise_ids)
+        ? workout.exercise_ids.map((value) => String(value))
+        : [];
+      workout.exercises = Array.isArray(workout.exercises) ? workout.exercises : [];
+    });
 
-  if (idSet.size) {
-    const queryIds = Array.from(idSet);
+    return { workouts, workout: workouts[0] };
+  }
+
+  const workoutIds = workouts
+    .map((workout) => workout.id)
+    .filter((value) => value !== undefined && value !== null)
+    .map((value) => String(value));
+
+  let joinRows = [];
+  if (workoutIds.length) {
     const { data, error } = await supabase
-      .from('exercises')
-      .select('id, name, category, target_muscle, primary_muscle')
-      .in('id', queryIds);
+      .from('workout_exercises')
+      .select('workout_id, exercise_id, exercises ( id, name, category, target_muscle, primary_muscle )')
+      .in('workout_id', workoutIds);
 
     if (error) {
-      console.error('Failed to hydrate exercises for workouts', error);
+      console.error('Failed to load workout_exercises for hydration', error);
     } else if (Array.isArray(data)) {
-      exerciseMap = new Map(data.map((exercise) => [String(exercise.id), exercise]));
+      joinRows = data;
     }
   }
 
-  normalizedWorkouts.forEach((workout) => {
-    workout.exercises = workout.exercise_ids
-      .map((exerciseId) => exerciseMap.get(String(exerciseId)))
-      .filter(Boolean);
+  const grouped = new Map();
+  joinRows.forEach((row) => {
+    const workoutId = String(row.workout_id);
+    if (!grouped.has(workoutId)) {
+      grouped.set(workoutId, { ids: [], exercises: [] });
+    }
+
+    const bucket = grouped.get(workoutId);
+    if (row.exercise_id !== undefined && row.exercise_id !== null) {
+      const exerciseId = String(row.exercise_id);
+      if (!bucket.ids.includes(exerciseId)) {
+        bucket.ids.push(exerciseId);
+      }
+    }
+
+    if (row.exercises) {
+      bucket.exercises.push({
+        id: row.exercises.id,
+        name: row.exercises.name,
+        category: row.exercises.category,
+        target_muscle: row.exercises.target_muscle,
+        primary_muscle: row.exercises.primary_muscle,
+      });
+    }
   });
 
-  return { workouts: normalizedWorkouts, workout: normalizedWorkouts[0] };
+  const hydrated = workouts.map((workout) => {
+    const workoutId = String(workout.id);
+    const bucket = grouped.get(workoutId) || { ids: [], exercises: [] };
+
+    return {
+      ...workout,
+      exercise_ids: bucket.ids,
+      exercises: bucket.exercises,
+    };
+  });
+
+  return { workouts: hydrated, workout: hydrated[0] };
 }
 
 function buildWorkoutPayload(body = {}) {
@@ -421,32 +479,9 @@ function buildWorkoutPayload(body = {}) {
       video_url: videoUrl,
       rest_interval: toNullableString(body.rest_interval),
       performed_at: performedAtResult || null,
-      exercise_ids: exerciseIds.length ? exerciseIds : null,
     },
+    exerciseIds,
   };
-}
-
-function normalizeExerciseIds(exerciseIds) {
-  if (!exerciseIds) {
-    return [];
-  }
-
-  if (Array.isArray(exerciseIds)) {
-    return exerciseIds.map((value) => String(value)).filter(Boolean);
-  }
-
-  if (typeof exerciseIds === 'string') {
-    try {
-      const parsed = JSON.parse(exerciseIds);
-      if (Array.isArray(parsed)) {
-        return parsed.map((value) => String(value)).filter(Boolean);
-      }
-    } catch (_err) {
-      return exerciseIds.split(',').map((value) => value.trim()).filter(Boolean);
-    }
-  }
-
-  return [];
 }
 
 function normalizeExerciseIdsInput(value) {
@@ -483,6 +518,57 @@ function parseWorkoutId(param = '') {
   }
 
   return { id: trimmed };
+}
+
+async function replaceWorkoutExercises(supabase, workoutId, exerciseIds, { skipDelete = false } = {}) {
+  if (!supabase || !workoutId) {
+    return null;
+  }
+
+  if (!skipDelete) {
+    const { error: deleteError } = await supabase
+      .from('workout_exercises')
+      .delete()
+      .eq('workout_id', workoutId);
+
+    if (deleteError) {
+      return deleteError;
+    }
+  }
+
+  if (!exerciseIds || !exerciseIds.length) {
+    return null;
+  }
+
+  const rowsWithOrder = exerciseIds.map((exerciseId, index) => ({
+    workout_id: workoutId,
+    exercise_id: exerciseId,
+    order_index: index,
+  }));
+
+  const { error: insertError, status: insertStatus } = await supabase
+    .from('workout_exercises')
+    .insert(rowsWithOrder, { returning: 'minimal' });
+
+  if (!insertError) {
+    return null;
+  }
+
+  const missingColumnCodes = new Set(['42703', 'PGRST204']);
+  if (!missingColumnCodes.has(insertError.code)) {
+    return insertError;
+  }
+
+  const rowsWithoutOrder = exerciseIds.map((exerciseId) => ({
+    workout_id: workoutId,
+    exercise_id: exerciseId,
+  }));
+
+  const fallback = await supabase
+    .from('workout_exercises')
+    .insert(rowsWithoutOrder, { returning: 'minimal' });
+
+  return fallback.error || null;
 }
 
 function respond(req, res, status, message) {
