@@ -906,6 +906,10 @@ h1,
   align-items: flex-start;
 }
 
+.items-end {
+  align-items: flex-end;
+}
+
 .items-center {
   align-items: center;
 }
@@ -992,6 +996,10 @@ h1,
 
 .rounded-xl {
   border-radius: 0.75rem;
+}
+
+.rounded-full {
+  border-radius: 9999px;
 }
 
 .border {
@@ -1165,6 +1173,11 @@ h1,
   padding-bottom: 1.5rem;
 }
 
+.px-2\.5 {
+  padding-left: 0.625rem;
+  padding-right: 0.625rem;
+}
+
 .pb-16 {
   padding-bottom: 4rem;
 }
@@ -1225,6 +1238,10 @@ h1,
 
 .uppercase {
   text-transform: uppercase;
+}
+
+.capitalize {
+  text-transform: capitalize;
 }
 
 .leading-relaxed {
@@ -1456,8 +1473,16 @@ h1,
     grid-column: span 2 / span 2;
   }
 
+  .md\:col-span-1 {
+    grid-column: span 1 / span 1;
+  }
+
   .md\:grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .md\:grid-cols-\[repeat\(4\2c minmax\(0\2c 1fr\)\)\] {
+    grid-template-columns: repeat(4,minmax(0,1fr));
   }
 
   .md\:flex-row {
@@ -1466,6 +1491,10 @@ h1,
 
   .md\:items-center {
     align-items: center;
+  }
+
+  .md\:justify-start {
+    justify-content: flex-start;
   }
 
   .md\:justify-between {
@@ -1550,6 +1579,10 @@ h1,
 
   .dark\:bg-ink\/40 {
     background-color: rgb(11 11 11 / 0.4);
+  }
+
+  .dark\:bg-graphite\/70 {
+    background-color: rgb(47 52 55 / 0.7);
   }
 
   .dark\:text-fog {

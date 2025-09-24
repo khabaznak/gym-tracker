@@ -63,6 +63,29 @@ app.engine(
           return '';
         }
       },
+      dayName(index) {
+        const names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const numeric = Number.parseInt(index, 10);
+        if (!Number.isFinite(numeric) || numeric < 1 || numeric > names.length) {
+          return 'Day';
+        }
+
+        return names[numeric - 1];
+      },
+      capitalize(value) {
+        if (typeof value !== 'string' || !value.length) {
+          return '';
+        }
+
+        return value[0].toUpperCase() + value.slice(1);
+      },
+      json(value) {
+        try {
+          return JSON.stringify(value === undefined ? null : value);
+        } catch (_error) {
+          return 'null';
+        }
+      },
     },
   })
 );
@@ -98,10 +121,13 @@ app.get('/health', (_req, res) => {
 });
 
 const workoutsModule = require('./routes/workouts');
+const plansModule = require('./routes/plans');
 const workoutsRouter = workoutsModule.createRouter(supabaseClient);
+const plansRouter = plansModule.createRouter(supabaseClient);
 const exercisesRouter = require('./routes/exercises')(supabaseClient);
 
 app.use('/workouts', workoutsRouter);
+app.use('/plans', plansRouter);
 app.use('/exercises', exercisesRouter);
 
 app.get('/', async (_req, res) => {
@@ -173,6 +199,40 @@ app.get('/setup/workouts', async (_req, res) => {
     workouts,
     exercises,
     activeNav: 'setup-workouts',
+  });
+});
+
+app.get('/setup/plans', async (_req, res) => {
+  const supabaseReady = Boolean(supabaseClient);
+  let plans = [];
+  let workouts = [];
+
+  if (supabaseClient) {
+    const [{ plans: planList, error: plansError }, { workouts: workoutOptions, error: workoutsError }]
+      = await Promise.all([
+        plansModule.fetchPlans(supabaseClient, { limit: 50 }),
+        plansModule.fetchWorkoutsForSelection(supabaseClient),
+      ]);
+
+    if (plansError) {
+      console.error('Failed to load plans for setup view', plansError);
+    } else {
+      plans = planList;
+    }
+
+    if (workoutsError) {
+      console.error('Failed to load workouts for plan form', workoutsError);
+    } else {
+      workouts = workoutOptions;
+    }
+  }
+
+  res.render('setup/plans', {
+    pageTitle: 'Manage Plans',
+    supabaseReady,
+    plans,
+    workouts,
+    activeNav: 'setup-plans',
   });
 });
 

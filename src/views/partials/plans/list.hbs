@@ -1,0 +1,11 @@
+{{#if plans.length}}
+  {{#each plans}}
+    {{> plans/item plan=this manageable=../manageable}}
+  {{/each}}
+{{else}}
+  {{#if supabaseReady}}
+    <p class="text-sm text-graphite/70 dark:text-fog/70">No plans created yet.</p>
+  {{else}}
+    <p class="text-sm text-orange dark:text-orange/80">Supabase is not configured yet. Add your credentials to start building plans.</p>
+  {{/if}}
+{{/if}}

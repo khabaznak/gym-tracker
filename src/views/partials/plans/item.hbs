@@ -1,0 +1,71 @@
+{{#with plan}}
+  <article
+    id="plan-{{id}}"
+    class="rounded-lg border border-graphite/10 bg-white p-4 text-sm text-graphite/80 shadow-sm transition hover:border-teal dark:border-fog/15 dark:bg-graphite dark:text-fog/80 dark:hover:border-orange"
+  >
+    <div class="flex flex-col gap-3">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="space-y-1">
+          <h3 class="text-base font-semibold text-ink dark:text-white">{{name}}</h3>
+          <p class="text-xs uppercase tracking-wide text-graphite/60 dark:text-fog/60">{{capitalize period}}</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide {{#if (eq status 'active')}}bg-teal/10 text-teal-dark dark:bg-orange/10 dark:text-orange{{else}}bg-graphite/10 text-graphite/70 dark:bg-graphite/70 dark:text-fog/80{{/if}}">
+            {{capitalize status}}
+          </span>
+          {{#if ../manageable}}
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                class="inline-flex items-center gap-2 rounded-lg border border-graphite/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-graphite transition hover:border-graphite/40 hover:text-ink focus:outline-none focus:ring-2 focus:ring-graphite/30 dark:border-fog/30 dark:text-fog dark:hover:border-fog/60 dark:hover:text-white dark:focus:ring-fog/30"
+                hx-get="/plans/{{id}}/edit"
+                hx-target="#plan-{{id}}"
+                hx-swap="outerHTML"
+                aria-label="Edit {{name}}"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 3.487a2.25 2.25 0 1 1 3.182 3.182L7.125 19.589 3 21l1.411-4.125L16.862 3.487z" />
+                </svg>
+                Edit
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center gap-2 rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-red-600 transition hover:border-red-400 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-200 dark:border-orange/50 dark:text-orange dark:hover:border-orange dark:hover:text-orange/80 dark:focus:ring-orange/30"
+                data-action="delete-plan"
+                data-plan-id="{{id}}"
+                data-plan-name="{{name}}"
+              >
+                Delete
+              </button>
+            </div>
+          {{/if}}
+        </div>
+      </div>
+
+      {{#if description}}
+        <p class="leading-relaxed text-graphite/80 dark:text-fog/80 whitespace-pre-line">{{description}}</p>
+      {{/if}}
+
+      {{#if assignments.length}}
+        <div class="space-y-1">
+          <p class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Schedule</p>
+          <ul class="space-y-1">
+            {{#each assignments}}
+              <li class="flex flex-wrap items-center gap-2 rounded-lg border border-graphite/10 bg-fog/60 px-3 py-2 text-xs text-graphite/80 dark:border-fog/20 dark:bg-graphite/70 dark:text-fog/80">
+                <span class="font-semibold text-ink dark:text-white">Week {{week_index}}</span>
+                <span>· {{dayName day_of_week}}</span>
+                {{#if workout}}
+                  <span>· {{workout.name}}</span>
+                {{else}}
+                  <span>· Workout {{workout_id}}</span>
+                {{/if}}
+              </li>
+            {{/each}}
+          </ul>
+        </div>
+      {{else}}
+        <p class="text-xs text-graphite/60 dark:text-fog/60">No workouts assigned yet.</p>
+      {{/if}}
+    </div>
+  </article>
+{{/with}}

@@ -540,10 +540,28 @@ async function replaceWorkoutExercises(supabase, workoutId, exerciseIds, { skipD
     return null;
   }
 
-  const rowsWithOrder = exerciseIds.map((exerciseId, index) => ({
+  const uniqueExerciseIds = [];
+  const seen = new Set();
+
+  exerciseIds.forEach((raw) => {
+    const value = raw === undefined || raw === null ? '' : String(raw).trim();
+    if (!value || seen.has(value)) {
+      return;
+    }
+
+    seen.add(value);
+    uniqueExerciseIds.push(value);
+  });
+
+  if (!uniqueExerciseIds.length) {
+    return null;
+  }
+
+  const rowsWithOrder = uniqueExerciseIds.map((exerciseId, index) => ({
     workout_id: workoutId,
     exercise_id: exerciseId,
     order_index: index,
+    position: index + 1,
   }));
 
   const { error: insertError, status: insertStatus } = await supabase
@@ -556,19 +574,95 @@ async function replaceWorkoutExercises(supabase, workoutId, exerciseIds, { skipD
 
   const missingColumnCodes = new Set(['42703', 'PGRST204']);
   if (!missingColumnCodes.has(insertError.code)) {
+    if (insertError.code === '23505') {
+      return await handleDuplicateInsert(supabase, workoutId, uniqueExerciseIds);
+    }
+
+    if (insertError.code === '23514') {
+      return await handlePositionConstraint(supabase, workoutId, rowsWithOrder);
+    }
     return insertError;
   }
 
-  const rowsWithoutOrder = exerciseIds.map((exerciseId) => ({
+  const rowsWithoutOrder = uniqueExerciseIds.map((exerciseId, index) => ({
     workout_id: workoutId,
     exercise_id: exerciseId,
+    position: index + 1,
   }));
 
   const fallback = await supabase
     .from('workout_exercises')
     .insert(rowsWithoutOrder, { returning: 'minimal' });
 
+  if (fallback.error) {
+    if (fallback.error.code === '23505') {
+      return await handleDuplicateInsert(supabase, workoutId, uniqueExerciseIds);
+    }
+
+    if (fallback.error.code === '23514') {
+      return await handlePositionConstraint(supabase, workoutId, rowsWithOrder, { fallbackOnly: true });
+    }
+  }
+
   return fallback.error || null;
+}
+
+async function handleDuplicateInsert(supabase, workoutId, exerciseIds) {
+  if (!exerciseIds || !exerciseIds.length) {
+    return null;
+  }
+
+  const rowsWithPosition = exerciseIds.map((exerciseId, index) => ({
+    workout_id: workoutId,
+    exercise_id: exerciseId,
+    position: index + 1,
+  }));
+
+  const { error } = await supabase
+    .from('workout_exercises')
+    .insert(rowsWithPosition, { returning: 'minimal' });
+
+  return error || null;
+}
+
+async function handlePositionConstraint(supabase, workoutId, rowsWithOrder, { fallbackOnly = false } = {}) {
+  if (!supabase || !workoutId) {
+    return null;
+  }
+
+  const { data: existingRows, error: existingError } = await supabase
+    .from('workout_exercises')
+    .select('id')
+    .eq('workout_id', workoutId)
+    .order('position');
+
+  if (existingError) {
+    console.error('Failed to read existing workout exercises before relinking', existingError);
+    return existingError;
+  }
+
+  if (existingRows && existingRows.length) {
+    const { error: deleteError } = await supabase
+      .from('workout_exercises')
+      .delete()
+      .eq('workout_id', workoutId);
+
+    if (deleteError) {
+      return deleteError;
+    }
+  }
+
+  const rowsWithoutPosition = rowsWithOrder.map(({ workout_id, exercise_id }, index) => ({
+    workout_id,
+    exercise_id,
+    position: index + 1,
+  }));
+
+  const { error } = await supabase
+    .from('workout_exercises')
+    .insert(rowsWithoutPosition, { returning: 'minimal' });
+
+  return error || null;
 }
 
 function respond(req, res, status, message) {
