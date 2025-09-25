@@ -24,18 +24,15 @@ create table if not exists public.plan_workouts (
 create index if not exists plan_workouts_plan_id_idx on public.plan_workouts(plan_id);
 create index if not exists plan_workouts_workout_id_idx on public.plan_workouts(workout_id);
 
--- Unique scheduling per plan/day/workout (allows multiple workouts per day via position)
 create unique index if not exists plan_workouts_plan_day_position_key
   on public.plan_workouts(plan_id, week_index, day_of_week, position);
 
--- Ensure week/day are positive
 alter table public.plan_workouts
   add constraint plan_workouts_week_positive_check check (week_index >= 1);
 
 alter table public.plan_workouts
   add constraint plan_workouts_day_range_check check (day_of_week between 1 and 7);
 
--- Ensure period/status values stay within expected options
 alter table public.plans
   add constraint plans_period_check
   check (period in ('weekly', 'bi-weekly', 'monthly'));
@@ -44,7 +41,6 @@ alter table public.plans
   add constraint plans_status_check
   check (status in ('active', 'inactive'));
 
--- Trigger to maintain updated_at
 create or replace function public.set_updated_at()
 returns trigger as $$
 begin
