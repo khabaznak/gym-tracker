@@ -385,6 +385,31 @@ async function fetchWorkoutsForSelection(supabase) {
   return { workouts: data || [], error };
 }
 
+async function fetchActivePlan(supabase) {
+  if (!supabase) {
+    return { plan: null, error: null };
+  }
+
+  const { data, error } = await supabase
+    .from('plans')
+    .select('*')
+    .eq('status', 'active')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    return { plan: null, error };
+  }
+
+  if (!data) {
+    return { plan: null, error: null };
+  }
+
+  const { plan } = await hydratePlans(supabase, [data]);
+  return { plan: plan || data, error: null };
+}
+
 async function hydratePlans(supabase, input) {
   const plans = Array.isArray(input) ? input.map((plan) => ({ ...plan })) : [];
 
@@ -773,4 +798,5 @@ module.exports = {
   fetchPlans,
   fetchPlanById,
   fetchWorkoutsForSelection,
+  fetchActivePlan,
 };

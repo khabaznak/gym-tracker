@@ -320,6 +320,7 @@ module.exports = {
   fetchWorkouts,
   fetchWorkoutById,
   fetchExercisesForSelection,
+  fetchWorkoutsByIds,
 };
 
 async function fetchWorkouts(supabase, { limit = 20 } = {}) {
@@ -355,6 +356,36 @@ async function fetchWorkoutById(supabase, id) {
 
   const { workouts } = await hydrateWorkouts(supabase, [data]);
   return { workout: workouts[0] || data, error: null, status: 200 };
+}
+
+async function fetchWorkoutsByIds(supabase, ids = []) {
+  if (!supabase) {
+    return { workouts: [], error: null };
+  }
+
+  const unique = Array.from(
+    new Set(
+      (Array.isArray(ids) ? ids : [ids])
+        .map((value) => (value === undefined || value === null ? '' : String(value).trim()))
+        .filter((value) => value.length)
+    )
+  );
+
+  if (!unique.length) {
+    return { workouts: [], error: null };
+  }
+
+  const { data, error } = await supabase
+    .from('workouts')
+    .select('*')
+    .in('id', unique);
+
+  if (error) {
+    return { workouts: [], error };
+  }
+
+  const { workouts } = await hydrateWorkouts(supabase, data || []);
+  return { workouts, error: null };
 }
 
 async function fetchExercisesForSelection(supabase) {
@@ -401,15 +432,34 @@ async function hydrateWorkouts(supabase, input) {
 
   let joinRows = [];
   if (workoutIds.length) {
-    const { data, error } = await supabase
+    const selection =
+      'workout_id, exercise_id, position, order_index, target_sets, target_reps, notes, exercises ( id, name, category, target_muscle, primary_muscle )';
+
+    let queryError = null;
+    let queryData = null;
+
+    const initial = await supabase
       .from('workout_exercises')
-      .select('workout_id, exercise_id, exercises ( id, name, category, target_muscle, primary_muscle )')
+      .select(selection)
       .in('workout_id', workoutIds);
 
-    if (error) {
-      console.error('Failed to load workout_exercises for hydration', error);
-    } else if (Array.isArray(data)) {
-      joinRows = data;
+    if (initial.error && initial.error.code === '42703') {
+      const fallback = await supabase
+        .from('workout_exercises')
+        .select('workout_id, exercise_id, position, order_index, exercises ( id, name, category, target_muscle, primary_muscle )')
+        .in('workout_id', workoutIds);
+
+      queryError = fallback.error;
+      queryData = fallback.data;
+    } else {
+      queryError = initial.error;
+      queryData = initial.data;
+    }
+
+    if (queryError) {
+      console.error('Failed to load workout_exercises for hydration', queryError);
+    } else if (Array.isArray(queryData)) {
+      joinRows = queryData;
     }
   }
 
@@ -428,25 +478,48 @@ async function hydrateWorkouts(supabase, input) {
       }
     }
 
-    if (row.exercises) {
-      bucket.exercises.push({
-        id: row.exercises.id,
-        name: row.exercises.name,
-        category: row.exercises.category,
-        target_muscle: row.exercises.target_muscle,
-        primary_muscle: row.exercises.primary_muscle,
-      });
-    }
+    const position = Number.isFinite(row.position)
+      ? row.position
+      : Number.isFinite(row.order_index)
+        ? row.order_index + 1
+        : bucket.exercises.length + 1;
+
+    const exerciseMeta = row.exercises || {};
+
+    const toPositiveInteger = (value) => {
+      const parsed = Number.parseInt(value, 10);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        return null;
+      }
+      return parsed;
+    };
+
+    bucket.exercises.push({
+      id: exerciseMeta.id || row.exercise_id,
+      name: exerciseMeta.name || `Exercise ${row.exercise_id}`,
+      category: exerciseMeta.category || null,
+      target_muscle: exerciseMeta.target_muscle || null,
+      primary_muscle: exerciseMeta.primary_muscle || null,
+      target_sets: toPositiveInteger(row.target_sets),
+      target_reps: toPositiveInteger(row.target_reps),
+      notes: typeof row.notes === 'string' ? row.notes : null,
+      position,
+    });
   });
 
   const hydrated = workouts.map((workout) => {
     const workoutId = String(workout.id);
     const bucket = grouped.get(workoutId) || { ids: [], exercises: [] };
+    const sortedExercises = bucket.exercises.slice().sort((left, right) => {
+      const leftPos = Number.isFinite(left.position) ? left.position : Number.MAX_SAFE_INTEGER;
+      const rightPos = Number.isFinite(right.position) ? right.position : Number.MAX_SAFE_INTEGER;
+      return leftPos - rightPos;
+    });
 
     return {
       ...workout,
       exercise_ids: bucket.ids,
-      exercises: bucket.exercises,
+      exercises: sortedExercises,
     };
   });
 

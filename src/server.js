@@ -126,6 +126,12 @@ const workoutsRouter = workoutsModule.createRouter(supabaseClient);
 const plansRouter = plansModule.createRouter(supabaseClient);
 const exercisesRouter = require('./routes/exercises')(supabaseClient);
 
+const PLAN_PERIOD_WEEKS = {
+  weekly: 1,
+  'bi-weekly': 2,
+  monthly: 4,
+};
+
 app.use('/workouts', workoutsRouter);
 app.use('/plans', plansRouter);
 app.use('/exercises', exercisesRouter);
@@ -279,13 +285,145 @@ app.get('/setup/plans', async (_req, res) => {
   });
 });
 
-app.get('/tracking/sessions', (_req, res) => {
+app.get('/tracking/sessions', async (_req, res) => {
   const supabaseReady = Boolean(supabaseClient);
+  const sessionDate = new Date();
+  const sessionDateLabel = new Intl.DateTimeFormat('en', { dateStyle: 'full' }).format(sessionDate);
+  const dayIndex = getIsoDayNumber(sessionDate);
+  const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const dayName = dayNames[(dayIndex - 1 + dayNames.length) % dayNames.length];
+
+  const sessionState = {
+    activePlan: null,
+    workouts: [],
+    weekIndex: 1,
+    planError: null,
+    workoutError: null,
+  };
+
+  if (supabaseClient) {
+    const { plan: activePlan, error: activePlanError } = await plansModule.fetchActivePlan(supabaseClient);
+
+    if (activePlanError) {
+      console.error('Failed to load active plan for session tracker', activePlanError);
+      sessionState.planError = 'Unable to load active plan. Verify your Supabase schema and try again.';
+    } else if (activePlan) {
+      sessionState.activePlan = activePlan;
+      sessionState.weekIndex = determinePlanWeek(activePlan, sessionDate);
+
+      const todaysAssignments = Array.isArray(activePlan.assignments)
+        ? activePlan.assignments
+            .filter((assignment) => {
+              const assignmentWeek = Number.parseInt(assignment.week_index, 10);
+              if (Number.isFinite(assignmentWeek) && assignmentWeek !== sessionState.weekIndex) {
+                return false;
+              }
+              const assignmentDay = Number.parseInt(assignment.day_of_week, 10);
+              return Number.isFinite(assignmentDay) ? assignmentDay === dayIndex : false;
+            })
+            .sort((left, right) => {
+              const leftParsed = Number.parseInt(left.position, 10);
+              const rightParsed = Number.parseInt(right.position, 10);
+              const safeLeft = Number.isFinite(leftParsed) ? leftParsed : Number.MAX_SAFE_INTEGER;
+              const safeRight = Number.isFinite(rightParsed) ? rightParsed : Number.MAX_SAFE_INTEGER;
+              return safeLeft - safeRight;
+            })
+        : [];
+
+      const workoutIds = Array.from(
+        new Set(
+          todaysAssignments
+            .map((assignment) =>
+              assignment.workout_id === undefined || assignment.workout_id === null
+                ? ''
+                : String(assignment.workout_id)
+            )
+            .filter((value) => value.length)
+        )
+      );
+
+      let workoutLookup = new Map();
+
+      if (workoutIds.length) {
+        const { workouts: hydratedWorkouts, error: workoutsError } = await workoutsModule.fetchWorkoutsByIds(
+          supabaseClient,
+          workoutIds
+        );
+
+        if (workoutsError) {
+          console.error('Failed to load workouts for session tracker', workoutsError);
+          sessionState.workoutError = 'Workouts for today could not be loaded. Refresh after checking Supabase data.';
+        } else if (Array.isArray(hydratedWorkouts) && hydratedWorkouts.length) {
+          workoutLookup = new Map(
+            hydratedWorkouts.map((workout) => [String(workout.id), workout])
+          );
+        }
+      }
+
+      sessionState.workouts = todaysAssignments
+        .map((assignment) => {
+          const key = assignment.workout_id === undefined || assignment.workout_id === null
+            ? ''
+            : String(assignment.workout_id);
+          const hydrated = workoutLookup.get(key) || assignment.workout || null;
+          if (!hydrated) {
+            return null;
+          }
+
+          const exercises = Array.isArray(hydrated.exercises)
+            ? hydrated.exercises.map((exercise, index) => buildExerciseSessionEntry(exercise, index))
+            : [];
+
+          return {
+            id: hydrated.id || assignment.workout_id,
+            name: hydrated.name || 'Workout',
+            description: hydrated.description || null,
+            rest_interval: hydrated.rest_interval || null,
+            notes: hydrated.notes || null,
+            position: (() => {
+              const parsed = Number.parseInt(assignment.position, 10);
+              return Number.isFinite(parsed) ? parsed : null;
+            })(),
+            exercises,
+          };
+        })
+        .filter(Boolean);
+    }
+  }
+
+  const hasSession = sessionState.workouts.length > 0;
+
+  const sessionConfig = {
+    planId: sessionState.activePlan ? sessionState.activePlan.id : null,
+    planName: sessionState.activePlan ? sessionState.activePlan.name : null,
+    dayIndex,
+    weekIndex: sessionState.weekIndex,
+    workouts: sessionState.workouts.map((workout) => ({
+      id: workout.id,
+      name: workout.name,
+      exercises: workout.exercises.map((exercise) => ({
+        id: exercise.id,
+        name: exercise.name,
+        targetSets: exercise.target_sets,
+        targetReps: exercise.target_reps,
+      })),
+    })),
+  };
 
   res.render('tracking/sessions', {
     pageTitle: 'Session Tracker',
     supabaseReady,
     activeNav: 'tracking-sessions',
+    sessionDateLabel,
+    dayName,
+    dayIndex,
+    planWeekIndex: sessionState.weekIndex,
+    activePlan: sessionState.activePlan,
+    sessionWorkouts: sessionState.workouts,
+    hasSession,
+    planError: sessionState.planError,
+    workoutError: sessionState.workoutError,
+    sessionConfig,
   });
 });
 
@@ -360,4 +498,66 @@ async function fetchExercises(supabase) {
     .limit(100);
 
   return { exercises: data || [], error };
+}
+
+function determinePlanWeek(plan, referenceDate = new Date()) {
+  if (!plan) {
+    return 1;
+  }
+
+  const period = typeof plan.period === 'string' ? plan.period : 'weekly';
+  const maxWeeks = PLAN_PERIOD_WEEKS[period] || 1;
+
+  const createdAt = plan && plan.created_at ? new Date(plan.created_at) : null;
+  if (!createdAt || Number.isNaN(createdAt.getTime()) || !Number.isFinite(maxWeeks) || maxWeeks <= 0) {
+    return 1;
+  }
+
+  const diffMs = referenceDate.getTime() - createdAt.getTime();
+  const diffDays = Math.max(Math.floor(diffMs / 86_400_000), 0);
+  const weeksElapsed = Math.floor(diffDays / 7);
+
+  return (weeksElapsed % maxWeeks) + 1;
+}
+
+function getIsoDayNumber(date = new Date()) {
+  const jsDay = date.getDay();
+  return ((jsDay + 6) % 7) + 1;
+}
+
+function buildExerciseSessionEntry(exercise, index = 0) {
+  const toPositiveInteger = (value, fallback) => {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return fallback;
+    }
+    return parsed;
+  };
+
+  const fallbackPosition = index + 1;
+  const targetSets = toPositiveInteger(exercise && exercise.target_sets, 3);
+  const targetReps = toPositiveInteger(exercise && exercise.target_reps, 10);
+
+  const sets = Array.from({ length: targetSets }, (_, setIndex) => ({
+    index: setIndex + 1,
+    target_reps: targetReps,
+  }));
+
+  const parsedPosition = Number.parseInt(exercise && exercise.position, 10);
+  const position = Number.isFinite(parsedPosition) && parsedPosition > 0 ? parsedPosition : fallbackPosition;
+
+  return {
+    id: exercise && exercise.id ? exercise.id : `exercise-${fallbackPosition}`,
+    name: exercise && exercise.name ? exercise.name : 'Exercise',
+    category: exercise && exercise.category ? exercise.category : null,
+    target_muscle: exercise && exercise.target_muscle ? exercise.target_muscle : null,
+    primary_muscle: exercise && exercise.primary_muscle ? exercise.primary_muscle : null,
+    target_sets: targetSets,
+    target_reps: targetReps,
+    notes: exercise && typeof exercise.notes === 'string' && exercise.notes.trim().length
+      ? exercise.notes.trim()
+      : null,
+    position,
+    sets,
+  };
 }
