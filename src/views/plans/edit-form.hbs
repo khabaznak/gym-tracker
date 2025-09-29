@@ -10,8 +10,8 @@
       hx-swap="outerHTML"
       hx-on="htmx:afterSwap: if (event.detail.xhr.status === 200) { document.dispatchEvent(new CustomEvent('plan-form:saved')); }"
       data-plan-form
-      data-workouts='{{{json ../workouts}}}'
-      data-initial-assignments='{{{json assignments}}}'
+      data-workouts="{{json ../workouts}}"
+      data-initial-assignments="{{json assignments}}"
     >
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div class="space-y-1">

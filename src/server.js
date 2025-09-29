@@ -203,9 +203,23 @@ app.get('/setup/workouts', async (_req, res) => {
 });
 
 app.get('/setup/plans', async (_req, res) => {
-  const supabaseReady = Boolean(supabaseClient);
+  const isMissingRelationError = (error) => {
+    if (!error) {
+      return false;
+    }
+
+    if (error.code === '42P01') {
+      return true;
+    }
+
+    const message = typeof error.message === 'string' ? error.message.toLowerCase() : '';
+    return message.includes('does not exist');
+  };
+
+  let supabaseReady = Boolean(supabaseClient);
   let plans = [];
   let workouts = [];
+  let planSchemaError = null;
 
   if (supabaseClient) {
     const [{ plans: planList, error: plansError }, { workouts: workoutOptions, error: workoutsError }]
@@ -214,18 +228,43 @@ app.get('/setup/plans', async (_req, res) => {
         plansModule.fetchWorkoutsForSelection(supabaseClient),
       ]);
 
+    const missingPlansTable = isMissingRelationError(plansError);
+    const missingWorkoutsTable = isMissingRelationError(workoutsError);
+
     if (plansError) {
-      console.error('Failed to load plans for setup view', plansError);
+      const message = missingPlansTable
+        ? 'Plans schema not found when loading setup view'
+        : 'Failed to load plans for setup view';
+      console[missingPlansTable ? 'warn' : 'error'](message, plansError);
     } else {
       plans = planList;
     }
 
     if (workoutsError) {
-      console.error('Failed to load workouts for plan form', workoutsError);
+      const message = missingWorkoutsTable
+        ? 'Workouts schema not found when loading plan form options'
+        : 'Failed to load workouts for plan form';
+      console[missingWorkoutsTable ? 'warn' : 'error'](message, workoutsError);
     } else {
       workouts = workoutOptions;
     }
+
+    if (missingPlansTable || missingWorkoutsTable) {
+      supabaseReady = false;
+      const missingTables = [];
+      if (missingPlansTable) {
+        missingTables.push('plans');
+      }
+      if (missingWorkoutsTable) {
+        missingTables.push('workouts');
+      }
+
+      planSchemaError = `Supabase schema for ${missingTables.join(' & ')} is missing. Run the plan migration in docs/manage-plans-checklist.md.`;
+    }
   }
+
+  const hasWorkouts = Array.isArray(workouts) && workouts.length > 0;
+  const planSchemaMissing = Boolean(planSchemaError);
 
   res.render('setup/plans', {
     pageTitle: 'Manage Plans',
@@ -233,6 +272,10 @@ app.get('/setup/plans', async (_req, res) => {
     plans,
     workouts,
     activeNav: 'setup-plans',
+    planSchemaError,
+    hasWorkouts,
+    planAssignmentsEnabled: supabaseReady && hasWorkouts,
+    planSchemaMissing,
   });
 });
 

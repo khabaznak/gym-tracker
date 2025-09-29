@@ -14,7 +14,7 @@ create table if not exists public.plans (
 create table if not exists public.plan_workouts (
   id uuid primary key default gen_random_uuid(),
   plan_id uuid not null references public.plans(id) on delete cascade,
-  workout_id uuid not null references public.workouts(id) on delete cascade,
+  workout_id bigint not null references public.workouts(id) on delete cascade,
   week_index integer not null default 1,
   day_of_week integer not null default 1,
   position integer not null default 1,

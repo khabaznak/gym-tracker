@@ -6,6 +6,10 @@
   {{#if supabaseReady}}
     <p class="text-sm text-graphite/70 dark:text-fog/70">No plans created yet.</p>
   {{else}}
-    <p class="text-sm text-orange dark:text-orange/80">Supabase is not configured yet. Add your credentials to start building plans.</p>
+    {{#if planSchemaMissing}}
+      <p class="text-sm text-orange dark:text-orange/80">Plans tables are missing in Supabase. Run <code>supabase db push</code> (or apply <code>supabase/scripts/plan-schema.sql</code>) and refresh.</p>
+    {{else}}
+      <p class="text-sm text-orange dark:text-orange/80">Supabase is not configured yet. Add your credentials to start building plans.</p>
+    {{/if}}
   {{/if}}
 {{/if}}

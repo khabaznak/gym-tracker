@@ -1,13 +1,19 @@
 # Manage Plans Checklist
 
 ## 1. Apply schema updates
-Run this script in the Supabase SQL editor or through `supabase db`:
+Run the project migrations (preferred) so the plans tables are created:
+
+```bash
+supabase db push
+```
+
+If you need to apply the SQL manually, run the script in the Supabase SQL editor or through `supabase db`:
 
 ```sql
 \i supabase/scripts/plan-schema.sql
 ```
 
-This adds `plans` and `plan_workouts` tables (with constraints and triggers). Adjust paths if you copy the SQL manually.
+These steps add the `plans` and `plan_workouts` tables (with constraints and triggers). Adjust paths if you copy the SQL manually.
 
 ## 2. Ensure RLS policies
 If row level security is enabled, apply the policies (replace `anon` with your runtime role if needed):

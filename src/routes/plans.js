@@ -34,6 +34,7 @@ function createRouter(supabase) {
         plans: [],
         supabaseReady: false,
         manageable: req.query.mode === 'manage',
+        planSchemaMissing: false,
       });
     }
 
@@ -41,6 +42,17 @@ function createRouter(supabase) {
     const manageable = req.query.mode === 'manage';
 
     if (error) {
+      if (isMissingRelationError(error)) {
+        console.warn('Plans schema not found when loading fragment', error);
+        return res.render('plans/list-fragment', {
+          layout: false,
+          plans: [],
+          supabaseReady: false,
+          manageable,
+          planSchemaMissing: true,
+        });
+      }
+
       console.error('Failed to load plans from Supabase', error);
       return renderHxError(res, 500, 'Unable to load plans.');
     }
@@ -50,6 +62,7 @@ function createRouter(supabase) {
       plans,
       supabaseReady: true,
       manageable,
+      planSchemaMissing: false,
     });
   });
 
@@ -477,6 +490,7 @@ function buildPlanPayload(body = {}) {
     payload: {
       name,
       description: toNullableString(body.description),
+      label: toNullableString(body.label),
       period,
       status,
     },
@@ -677,6 +691,15 @@ function escapeHtml(string = '') {
     .replace(/'/g, '&#039;');
 }
 
+function toNullableString(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
 function ensureArray(value) {
   if (Array.isArray(value)) {
     return value;
@@ -730,6 +753,19 @@ function normalizeStatus(status) {
   }
 
   return 'inactive';
+}
+
+function isMissingRelationError(error) {
+  if (!error) {
+    return false;
+  }
+
+  if (error.code === '42P01') {
+    return true;
+  }
+
+  const message = typeof error.message === 'string' ? error.message.toLowerCase() : '';
+  return message.includes('does not exist');
 }
 
 module.exports = {

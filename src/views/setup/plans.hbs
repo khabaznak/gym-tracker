@@ -22,6 +22,13 @@
 
     <div id="plan-form-messages" class="mt-6 text-sm text-graphite/70 dark:text-fog/70" role="status"></div>
 
+    {{#if planSchemaError}}
+      <div class="mt-4 rounded-lg border border-orange/40 bg-orange/10 px-3 py-2 text-sm text-orange dark:border-orange/40 dark:bg-orange/10 dark:text-orange">
+        <p>{{planSchemaError}}</p>
+        <p class="mt-2">Apply the migration with <code>supabase db push</code> or run <code>\i supabase/scripts/plan-schema.sql</code>, then refresh.</p>
+      </div>
+    {{/if}}
+
     <div id="new-plan-form-container" class="mt-6 hidden" aria-hidden="true">
       <form
         id="new-plan-form"
@@ -31,8 +38,8 @@
         hx-swap="innerHTML"
         hx-on="htmx:afterSwap: if (event.detail.xhr.status === 201) { this.reset(); this.dataset.initialAssignments='[]'; document.dispatchEvent(new CustomEvent('plan-form:saved')); }"
         data-plan-form
-        data-workouts='{{{json workouts}}}'
-        data-initial-assignments='[]'
+        data-workouts="{{json workouts}}"
+        data-initial-assignments="[]"
       >
         <fieldset class="grid gap-4 md:grid-cols-2" {{#unless supabaseReady}}disabled{{/unless}}>
           <div class="flex flex-col gap-2">
@@ -91,13 +98,22 @@
           </div>
         </fieldset>
 
+        {{#if supabaseReady}}
+          {{#unless hasWorkouts}}
+            <div class="rounded-lg border border-orange/40 bg-orange/10 px-3 py-2 text-sm text-orange dark:border-orange/40 dark:bg-orange/10 dark:text-orange">
+              Create workouts in Manage Workouts before assigning them to a plan, then refresh this page.
+            </div>
+          {{/unless}}
+        {{/if}}
+
         <div class="space-y-4" data-plan-schedule>
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Schedule</h3>
             <button
               type="button"
               data-action="add-assignment"
-              class="inline-flex items-center gap-2 rounded-lg border border-graphite/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-graphite transition hover:border-graphite/40 hover:text-ink focus:outline-none focus:ring-2 focus:ring-graphite/30 dark:border-fog/30 dark:text-fog dark:hover:border-fog/60 dark:hover:text-white dark:focus:ring-fog/30"
+              class="inline-flex items-center gap-2 rounded-lg border border-graphite/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-graphite transition hover:border-graphite/40 hover:text-ink focus:outline-none focus:ring-2 focus:ring-graphite/30 disabled:cursor-not-allowed disabled:opacity-60 dark:border-fog/30 dark:text-fog dark:hover:border-fog/60 dark:hover:text-white dark:focus:ring-fog/30"
+              {{#unless planAssignmentsEnabled}}disabled aria-disabled="true"{{/unless}}
             >
               Add assignment
             </button>
@@ -150,7 +166,7 @@
           hx-swap="innerHTML"
         {{/if}}
       >
-        {{> plans/list plans=plans supabaseReady=supabaseReady manageable=true}}
+    {{> plans/list plans=plans supabaseReady=supabaseReady manageable=true planSchemaMissing=planSchemaMissing}}
       </div>
     </div>
   </section>
@@ -421,6 +437,10 @@
       };
 
       const ensureAtLeastOneRow = () => {
+        if (!workouts.length) {
+          return;
+        }
+
         if (!container.querySelector('[data-plan-row]')) {
           createAssignmentRow();
         }
@@ -434,7 +454,7 @@
             workout_id: assignment.workout_id || (assignment.workout && assignment.workout.id),
           });
         });
-      } else {
+      } else if (workouts.length) {
         createAssignmentRow();
       }
 
