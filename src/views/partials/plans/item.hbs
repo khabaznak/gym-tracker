@@ -49,7 +49,7 @@
       {{#if schedule.hasWorkouts}}
         <div class="space-y-3">
           <p class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Schedule Overview</p>
-          <div class="grid gap-3 md:grid-cols-2">
+          <div class="grid gap-3 {{#if (eq period 'monthly')}}md:grid-cols-2 lg:grid-cols-2{{else if (eq period 'bi-weekly')}}md:grid-cols-2{{else}}md:grid-cols-1{{/if}}">
             {{#each schedule.weeks}}
               <section class="space-y-2 rounded-lg border border-graphite/10 bg-fog/60 p-3 text-xs text-graphite/80 dark:border-fog/20 dark:bg-graphite/70 dark:text-fog/80">
                 <header class="flex items-center justify-between">
@@ -62,13 +62,16 @@
                   <ul class="space-y-2">
                     {{#each days}}
                       {{#if workouts.length}}
-                        <li class="space-y-1 rounded-lg border border-graphite/10 bg-white/70 px-3 py-2 dark:border-fog/15 dark:bg-graphite/50">
+                        <li class="space-y-2 rounded-lg border border-graphite/10 bg-white/70 px-3 py-2 dark:border-fog/15 dark:bg-graphite/50">
                           <p class="text-[11px] font-semibold uppercase tracking-wide text-graphite/70 dark:text-fog/70">{{day_name}}</p>
                           <ul class="space-y-1 text-[11px]">
                             {{#each workouts}}
                               <li class="flex items-center gap-2">
                                 <span class="inline-flex h-2 w-2 flex-none rounded-full bg-teal/40 dark:bg-orange/50"></span>
                                 <span class="text-graphite/80 dark:text-fog/80">{{name}}</span>
+                                {{#if position}}
+                                  <span class="text-graphite/50 dark:text-fog/60">(#{{position}})</span>
+                                {{/if}}
                               </li>
                             {{/each}}
                           </ul>
@@ -80,6 +83,23 @@
               </section>
             {{/each}}
           </div>
+        </div>
+      {{else if assignments.length}}
+        <div class="space-y-1">
+          <p class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Schedule</p>
+          <ul class="space-y-1">
+            {{#each assignments}}
+              <li class="flex flex-wrap items-center gap-2 rounded-lg border border-graphite/10 bg-fog/60 px-3 py-2 text-xs text-graphite/80 dark:border-fog/20 dark:bg-graphite/70 dark:text-fog/80">
+                <span class="font-semibold text-ink dark:text-white">Week {{week_index}}</span>
+                <span>· {{dayName day_of_week}}</span>
+                {{#if workout}}
+                  <span>· {{workout.name}}</span>
+                {{else}}
+                  <span>· Workout {{workout_id}}</span>
+                {{/if}}
+              </li>
+            {{/each}}
+          </ul>
         </div>
       {{else}}
         <p class="text-xs text-graphite/60 dark:text-fog/60">No workouts assigned yet.</p>

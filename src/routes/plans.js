@@ -208,6 +208,15 @@ function createRouter(supabase) {
     });
 
     if (linkError) {
+      await rollbackPlanOnLinkFailure(supabase, data.id);
+      if (isRlsViolation(linkError)) {
+        return respond(
+          req,
+          res,
+          403,
+          'Supabase blocked plan workouts due to row-level security. Run supabase/scripts/plan-policies.sql (or configure SUPABASE_SERVICE_ROLE_KEY) and try again.'
+        );
+      }
       console.error('Failed to link workouts to plan', linkError);
       return respond(req, res, 500, 'Unable to connect workouts to plan');
     }
@@ -282,6 +291,14 @@ function createRouter(supabase) {
     });
 
     if (linkError) {
+      if (isRlsViolation(linkError)) {
+        return respond(
+          req,
+          res,
+          403,
+          'Supabase blocked plan workouts due to row-level security. Run supabase/scripts/plan-policies.sql (or configure SUPABASE_SERVICE_ROLE_KEY) and try again.'
+        );
+      }
       console.error('Failed to relink workouts to plan', linkError);
       return respond(req, res, 500, 'Unable to update plan workouts');
     }
@@ -416,6 +433,7 @@ async function hydratePlans(supabase, input) {
   if (!plans.length) {
     plans.forEach((plan) => {
       plan.assignments = [];
+      plan.schedule = buildPlanSchedule([], normalizePeriod(plan.period));
     });
 
     return { plans, plan: plans[0] };
@@ -424,6 +442,10 @@ async function hydratePlans(supabase, input) {
   if (!supabase) {
     plans.forEach((plan) => {
       plan.assignments = Array.isArray(plan.assignments) ? plan.assignments : [];
+      const period = normalizePeriod(plan.period);
+      plan.schedule = buildPlanSchedule(plan.assignments, period);
+      plan.period = period;
+      plan.status = normalizeStatus(plan.status);
     });
 
     return { plans, plan: plans[0] };
@@ -860,6 +882,23 @@ function buildPlanSchedule(assignments = [], period = 'weekly') {
   }
 
   return { weeks, hasWorkouts };
+}
+
+function isRlsViolation(error) {
+  return Boolean(error && error.code === '42501');
+}
+
+async function rollbackPlanOnLinkFailure(supabase, planId) {
+  if (!supabase || !planId) {
+    return;
+  }
+
+  try {
+    await supabase.from('plan_workouts').delete().eq('plan_id', planId);
+    await supabase.from('plans').delete().eq('id', planId);
+  } catch (cleanupError) {
+    console.warn('Failed to roll back plan after link failure', cleanupError);
+  }
 }
 
 function isMissingRelationError(error) {
