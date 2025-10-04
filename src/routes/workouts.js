@@ -446,7 +446,7 @@ async function hydrateWorkouts(supabase, input) {
     if (initial.error && initial.error.code === '42703') {
       const fallback = await supabase
         .from('workout_exercises')
-        .select('workout_id, exercise_id, position, order_index, exercises ( id, name, category, target_muscle, primary_muscle )')
+        .select('workout_id, exercise_id, position, exercises ( id, name, category, target_muscle, primary_muscle )')
         .in('workout_id', workoutIds);
 
       queryError = fallback.error;

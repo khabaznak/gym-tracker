@@ -466,7 +466,7 @@ async function hydratePlans(supabase, input) {
 
   const hydrated = plans.map((plan) => {
     const planId = String(plan.id);
-    const assignments = grouped.get(planId) || [];
+    const assignments = (grouped.get(planId) || []).slice();
 
     assignments.sort((left, right) => {
       const weekLeft = Number.isFinite(left.week_index) ? left.week_index : Number.MAX_SAFE_INTEGER;
@@ -486,11 +486,16 @@ async function hydratePlans(supabase, input) {
       return posLeft - posRight;
     });
 
+    const normalizedPeriod = normalizePeriod(plan.period);
+    const normalizedStatus = normalizeStatus(plan.status);
+    const schedule = buildPlanSchedule(assignments, normalizedPeriod);
+
     return {
       ...plan,
-      period: normalizePeriod(plan.period),
-      status: normalizeStatus(plan.status),
+      period: normalizedPeriod,
+      status: normalizedStatus,
       assignments,
+      schedule,
     };
   });
 
@@ -778,6 +783,83 @@ function normalizeStatus(status) {
   }
 
   return 'inactive';
+}
+
+function buildPlanSchedule(assignments = [], period = 'weekly') {
+  const periodKey = PLAN_PERIODS.has(period) ? period : 'weekly';
+  const weeksCount = MAX_WEEKS[periodKey] || 1;
+  const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+  const buckets = new Map();
+
+  assignments.forEach((assignment) => {
+    let weekIndex = Number.parseInt(assignment.week_index, 10);
+    if (!Number.isFinite(weekIndex)) {
+      weekIndex = 1;
+    }
+    weekIndex = clampWeek(weekIndex, MAX_WEEKS, periodKey);
+
+    const dayIndexRaw = Number.parseInt(assignment.day_of_week, 10);
+    if (!Number.isFinite(dayIndexRaw)) {
+      return;
+    }
+    const dayIndex = clampDay(dayIndexRaw);
+
+    const key = `${weekIndex}|${dayIndex}`;
+    if (!buckets.has(key)) {
+      buckets.set(key, []);
+    }
+
+    const workouts = buckets.get(key);
+    const workoutName = assignment.workout && assignment.workout.name
+      ? assignment.workout.name
+      : assignment.workout_id
+        ? `Workout ${assignment.workout_id}`
+        : 'Workout';
+
+    const positionValue = Number.parseInt(assignment.position, 10);
+    workouts.push({
+      id: assignment.workout_id || (assignment.workout && assignment.workout.id) || null,
+      name: workoutName,
+      position: Number.isFinite(positionValue) ? positionValue : workouts.length + 1,
+    });
+  });
+
+  const weeks = [];
+  let hasWorkouts = false;
+
+  for (let week = 1; week <= weeksCount; week += 1) {
+    const days = [];
+    let weekHasWorkouts = false;
+
+    for (let day = 1; day <= 7; day += 1) {
+      const key = `${week}|${day}`;
+      const workouts = (buckets.get(key) || []).slice().sort((left, right) => {
+        const leftPos = Number.isFinite(left.position) ? left.position : Number.MAX_SAFE_INTEGER;
+        const rightPos = Number.isFinite(right.position) ? right.position : Number.MAX_SAFE_INTEGER;
+        return leftPos - rightPos;
+      });
+
+      if (workouts.length) {
+        hasWorkouts = true;
+        weekHasWorkouts = true;
+      }
+
+      days.push({
+        day_index: day,
+        day_name: dayNames[day - 1],
+        workouts,
+      });
+    }
+
+    weeks.push({
+      number: week,
+      days,
+      hasWorkouts: weekHasWorkouts,
+    });
+  }
+
+  return { weeks, hasWorkouts };
 }
 
 function isMissingRelationError(error) {
