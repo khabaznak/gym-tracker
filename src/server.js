@@ -122,8 +122,10 @@ app.get('/health', (_req, res) => {
 
 const workoutsModule = require('./routes/workouts');
 const plansModule = require('./routes/plans');
+const sessionsModule = require('./routes/sessions');
 const workoutsRouter = workoutsModule.createRouter(supabaseClient);
 const plansRouter = plansModule.createRouter(supabaseClient);
+const sessionsRouter = sessionsModule.createRouter(supabaseClient);
 const exercisesRouter = require('./routes/exercises')(supabaseClient);
 
 const PLAN_PERIOD_WEEKS = {
@@ -134,6 +136,7 @@ const PLAN_PERIOD_WEEKS = {
 
 app.use('/workouts', workoutsRouter);
 app.use('/plans', plansRouter);
+app.use('/sessions', sessionsRouter);
 app.use('/exercises', exercisesRouter);
 
 app.get('/', async (_req, res) => {

@@ -81,6 +81,7 @@
       <div class="rounded-lg border border-graphite/10 bg-fog/60 p-4 text-sm text-graphite/80 dark:border-fog/20 dark:bg-graphite/60 dark:text-fog/80">
         <p data-mode-instructions="focus">Work through each exercise sequentially, completing all planned sets before moving on. Stay dialed in and update the table as you go.</p>
         <p data-mode-instructions="circuit" class="hidden">Move down the exercise list one set at a time. Complete the first round for every movement, rest, and repeat until all rounds are finished.</p>
+        <div data-session-message class="mt-3 hidden rounded-lg border border-teal/30 bg-teal/10 px-3 py-2 text-xs text-teal-dark transition dark:border-orange/40 dark:bg-orange/10 dark:text-orange"></div>
         <div class="mt-4 flex flex-wrap gap-4 text-xs uppercase tracking-wide text-graphite/60 dark:text-fog/60">
           <span>Session status: <strong class="text-graphite dark:text-fog" data-session-status>Idle</strong></span>
           <span>Elapsed time: <strong class="text-graphite dark:text-fog" data-session-duration>00:00</strong></span>
@@ -198,6 +199,11 @@
     };
 
     const config = parseConfig();
+    const sessionState = {
+      id: null,
+      sets: [],
+      startTimestamp: null,
+    };
     let currentMode = root.dataset.mode || 'focus';
     let timerId = null;
     let startTime = null;
@@ -208,6 +214,38 @@
     const durationLabel = root.querySelector('[data-session-duration]');
     const modeButtons = Array.from(root.querySelectorAll('[data-mode-option]'));
     const instructionBlocks = Array.from(root.querySelectorAll('[data-mode-instructions]'));
+    const messageArea = root.querySelector('[data-session-message]');
+    const startButtonDefaultLabel = startButton ? startButton.textContent : 'Start workout';
+
+    const messageStyles = {
+      info: ['border-teal/30', 'bg-teal/10', 'text-teal-dark', 'dark:border-orange/40', 'dark:bg-orange/10', 'dark:text-orange'],
+      success: ['border-teal/40', 'bg-teal/10', 'text-teal-dark', 'dark:border-orange/40', 'dark:bg-orange/10', 'dark:text-orange'],
+      error: ['border-red-300', 'bg-red-50', 'text-red-700', 'dark:border-orange/60', 'dark:bg-orange/10', 'dark:text-orange'],
+    };
+
+    const setMessage = (text, type = 'info') => {
+      if (!messageArea) {
+        return;
+      }
+
+      const variants = new Set([...messageStyles.info, ...messageStyles.success, ...messageStyles.error]);
+      variants.forEach((cls) => messageArea.classList.remove(cls));
+
+      const style = messageStyles[type] || messageStyles.info;
+      style.forEach((cls) => messageArea.classList.add(cls));
+
+      messageArea.textContent = text;
+      messageArea.classList.remove('hidden');
+    };
+
+    const clearMessage = () => {
+      if (!messageArea) {
+        return;
+      }
+
+      messageArea.textContent = '';
+      messageArea.classList.add('hidden');
+    };
 
     const updateStatus = (state) => {
       root.dataset.sessionState = state;
@@ -247,6 +285,8 @@
         window.clearInterval(timerId);
         timerId = null;
       }
+      startTime = null;
+      sessionState.startTimestamp = null;
     };
 
     const updateMode = (mode) => {
@@ -309,44 +349,279 @@
       });
     };
 
+    const applySessionSets = (sets = []) => {
+      const setItems = Array.from(root.querySelectorAll('[data-set-item]'));
+
+      setItems.forEach((item) => {
+        delete item.dataset.setId;
+        const checkbox = item.querySelector('[data-set-checkbox]');
+        if (checkbox) {
+          delete checkbox.dataset.setId;
+          checkbox.checked = false;
+          checkbox.disabled = false;
+        }
+
+        const input = item.querySelector('[data-set-actual]');
+        if (input) {
+          input.disabled = false;
+          input.value = '';
+        }
+      });
+
+      if (!Array.isArray(sets) || !sets.length) {
+        initializeProgress();
+        return;
+      }
+
+      setItems.forEach((item, index) => {
+        const setData = sets[index];
+        if (!setData || !setData.id) {
+          return;
+        }
+
+        item.dataset.setId = setData.id;
+
+        const checkbox = item.querySelector('[data-set-checkbox]');
+        if (checkbox) {
+          checkbox.dataset.setId = setData.id;
+          checkbox.checked = Boolean(setData.completed);
+          checkbox.disabled = false;
+        }
+
+        const input = item.querySelector('[data-set-actual]');
+        if (input) {
+          input.disabled = false;
+          if (Number.isFinite(setData.actual_reps)) {
+            input.value = setData.actual_reps;
+          } else {
+            input.value = '';
+          }
+        }
+      });
+
+      initializeProgress();
+    };
+
+    const collectSetPayloads = () => {
+      const setItems = Array.from(root.querySelectorAll('[data-set-item]'));
+
+      return setItems
+        .map((item) => {
+          const setId = item.dataset.setId;
+          if (!setId) {
+            return null;
+          }
+
+          const checkbox = item.querySelector('[data-set-checkbox]');
+          const input = item.querySelector('[data-set-actual]');
+
+          let actual = null;
+          if (input && typeof input.value === 'string' && input.value.trim().length) {
+            const parsed = Number.parseInt(input.value.trim(), 10);
+            if (Number.isFinite(parsed) && parsed >= 0) {
+              actual = parsed;
+            }
+          }
+
+          return {
+            id: setId,
+            completed: checkbox ? checkbox.checked : false,
+            actual_reps: actual,
+            notes: '',
+          };
+        })
+        .filter(Boolean);
+    };
+
+    const buildSessionRequestBody = () => {
+      const workouts = Array.isArray(config.workouts) ? config.workouts : [];
+
+      return {
+        plan_id: config.planId,
+        plan_name: config.planName,
+        day_index: config.dayIndex,
+        week_index: config.weekIndex,
+        mode: currentMode,
+        workouts: workouts.map((workout, workoutIndex) => {
+          const exercises = Array.isArray(workout.exercises) ? workout.exercises : [];
+          return {
+            id: workout.id || null,
+            name: typeof workout.name === 'string' ? workout.name : `Workout ${workoutIndex + 1}`,
+            position: Number.isFinite(workout.position) ? workout.position : workoutIndex + 1,
+            exercises: exercises.map((exercise, exerciseIndex) => {
+              const sets = Array.isArray(exercise.sets) && exercise.sets.length
+                ? exercise.sets
+                : Array.from({ length: Number.isFinite(exercise.target_sets) ? exercise.target_sets : 1 }, (_, idx) => ({
+                    index: idx + 1,
+                    target_reps: Number.isFinite(exercise.target_reps) ? exercise.target_reps : null,
+                  }));
+
+              return {
+                id: exercise.id || null,
+                name: typeof exercise.name === 'string' ? exercise.name : `Exercise ${exerciseIndex + 1}`,
+                target_sets: exercise.target_sets,
+                target_reps: exercise.target_reps,
+                sets: sets.map((set, setIndex) => ({
+                  index: Number.isFinite(set.index) ? set.index : setIndex + 1,
+                  target_reps:
+                    Number.isFinite(set.target_reps) ? set.target_reps : Number.isFinite(exercise.target_reps) ? exercise.target_reps : null,
+                })),
+              };
+            }),
+          };
+        }),
+      };
+    };
+
+    const parseErrorResponse = async (response) => {
+      try {
+        const data = await response.json();
+        if (data && data.error) {
+          return data.error;
+        }
+      } catch (_error) {
+        // ignore JSON parse errors
+      }
+
+      return response.statusText || 'Request failed';
+    };
+
     if (startButton) {
-      startButton.addEventListener('click', () => {
+      startButton.addEventListener('click', async () => {
         if (root.dataset.sessionState === 'active') {
           return;
         }
 
         if (root.dataset.hasSession !== 'true') {
+          setMessage('Assign workouts to your plan before starting a session.', 'error');
           return;
         }
 
-        startTime = Date.now();
-        updateStatus('active');
-        refreshDuration();
+        clearMessage();
+        setMessage('Starting session…', 'info');
+
         stopTimer();
-        timerId = window.setInterval(refreshDuration, 1000);
 
         startButton.disabled = true;
         startButton.setAttribute('aria-disabled', 'true');
-        endButton?.removeAttribute('disabled');
-        endButton?.setAttribute('aria-disabled', 'false');
+
+        try {
+          const response = await fetch('/sessions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(buildSessionRequestBody()),
+          });
+
+          if (!response.ok) {
+            const errorMessage = await parseErrorResponse(response);
+            throw new Error(errorMessage);
+          }
+
+          const data = await response.json();
+          sessionState.id = data && data.session ? data.session.id : null;
+          sessionState.sets = Array.isArray(data && data.sets) ? data.sets : [];
+          applySessionSets(sessionState.sets);
+          root.dataset.sessionId = sessionState.id || '';
+
+          sessionState.startTimestamp = Date.now();
+          startTime = sessionState.startTimestamp;
+          updateStatus('active');
+          refreshDuration();
+          timerId = window.setInterval(refreshDuration, 1000);
+
+          startButton.textContent = 'Session in progress';
+          endButton?.removeAttribute('disabled');
+          endButton?.setAttribute('aria-disabled', 'false');
+
+          setMessage('Session started. Track your sets as you go!', 'success');
+        } catch (error) {
+          console.error('Failed to start session', error);
+          setMessage(error.message || 'Unable to start the session. Please try again.', 'error');
+          startButton.disabled = false;
+          startButton.setAttribute('aria-disabled', 'false');
+          startButton.textContent = startButtonDefaultLabel;
+        }
       });
     }
 
     if (endButton) {
-      endButton.addEventListener('click', () => {
+      endButton.addEventListener('click', async () => {
         if (root.dataset.sessionState !== 'active') {
+          setMessage('Start the session before ending it.', 'error');
           return;
         }
 
-        stopTimer();
-        refreshDuration();
-        updateStatus('completed');
+        if (!sessionState.id) {
+          setMessage('No active session found. Try starting again.', 'error');
+          return;
+        }
+
+        clearMessage();
+        setMessage('Saving session…', 'info');
+
         endButton.disabled = true;
         endButton.setAttribute('aria-disabled', 'true');
-        if (startButton) {
-          startButton.disabled = false;
-          startButton.setAttribute('aria-disabled', 'false');
-          startButton.textContent = 'Restart workout';
+
+        const now = Date.now();
+        const durationSeconds = sessionState.startTimestamp
+          ? Math.max(Math.floor((now - sessionState.startTimestamp) / 1000), 0)
+          : null;
+
+        const payload = {
+          duration_seconds: durationSeconds,
+          ended_at: new Date(now).toISOString(),
+          sets: collectSetPayloads(),
+        };
+
+        try {
+          const response = await fetch(`/sessions/${encodeURIComponent(sessionState.id)}/complete`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          });
+
+          if (!response.ok) {
+            const errorMessage = await parseErrorResponse(response);
+            throw new Error(errorMessage);
+          }
+
+          updateStatus('completed');
+          stopTimer();
+          refreshDuration();
+
+          const checkboxes = Array.from(root.querySelectorAll('[data-set-checkbox]'));
+          checkboxes.forEach((checkbox) => {
+            checkbox.disabled = true;
+          });
+
+          const inputs = Array.from(root.querySelectorAll('[data-set-actual]'));
+          inputs.forEach((input) => {
+            input.disabled = true;
+          });
+
+          setMessage('Session saved. Great work!', 'success');
+
+          endButton.disabled = true;
+          endButton.setAttribute('aria-disabled', 'true');
+
+          if (startButton) {
+            startButton.disabled = false;
+            startButton.setAttribute('aria-disabled', 'false');
+            startButton.textContent = 'Restart workout';
+          }
+
+          sessionState.id = null;
+          sessionState.sets = [];
+          root.dataset.sessionId = '';
+        } catch (error) {
+          console.error('Failed to complete session', error);
+          setMessage(error.message || 'Unable to save the session. Please try again.', 'error');
+          endButton.disabled = false;
+          endButton.setAttribute('aria-disabled', 'false');
         }
       });
     }
