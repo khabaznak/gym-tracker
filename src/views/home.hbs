@@ -1,89 +1,127 @@
-{{> header title="Gym Tracker" subtitle="Powered by Express, HTMX, Tailwind & Supabase"}}
+{{> header title="Dashboard" subtitle="Check your plan, track the week, and review recent sessions at a glance."}}
 
 <main class="mx-auto mt-10 flex w-full max-w-5xl flex-col gap-8 px-6 pb-16">
   <section class="rounded-xl bg-white p-6 shadow-lg ring-1 ring-graphite/10 dark:bg-graphite dark:text-fog dark:ring-graphite/40">
-    <div class="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-      <h2 class="text-lg font-semibold text-ink dark:text-white">Log a workout</h2>
-      {{#unless supabaseReady}}
-        <p class="text-sm text-orange dark:text-orange/80">Supabase credentials are missing – form submissions will be disabled.</p>
-      {{/unless}}
+    <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+      <div class="space-y-2">
+        <h2 class="text-lg font-semibold text-ink dark:text-white">Current plan</h2>
+        {{#if planError}}
+          <p class="rounded-lg border border-orange/40 bg-orange/10 px-3 py-2 text-sm text-orange dark:border-orange/40 dark:bg-orange/10 dark:text-orange">{{planError}}</p>
+        {{else if supabaseReady}}
+          {{#if activePlan}}
+            <div class="space-y-1 text-sm text-graphite/80 dark:text-fog/80">
+              <p><span class="font-semibold text-ink dark:text-white">{{activePlan.name}}</span> · {{capitalize activePlan.period}} · Week {{planWeekIndex}}</p>
+              {{#if activePlan.label}}
+                <p class="text-xs uppercase tracking-wide text-graphite/60 dark:text-fog/60">Label: {{activePlan.label}}</p>
+              {{/if}}
+              <p class="text-xs uppercase tracking-wide text-graphite/60 dark:text-fog/60">Status: <span class="font-semibold {{#if (eq activePlan.status 'active')}}text-teal dark:text-orange{{else}}text-graphite/70 dark:text-fog/70{{/if}}">{{capitalize activePlan.status}}</span></p>
+            </div>
+          {{else}}
+            <p class="rounded-lg border border-graphite/10 bg-fog/60 px-3 py-2 text-sm text-graphite/70 dark:border-fog/20 dark:bg-graphite/60 dark:text-fog/70">No active plan yet. Activate one in Manage Plans to populate your dashboard.</p>
+          {{/if}}
+        {{else}}
+          <p class="rounded-lg border border-graphite/10 bg-fog/60 px-3 py-2 text-sm text-graphite/70 dark:border-fog/20 dark:bg-graphite/60 dark:text-fog/70">Connect Supabase to load plan and session data.</p>
+        {{/if}}
+      </div>
+      <dl class="grid w-full max-w-md grid-cols-2 gap-4 text-sm text-graphite/80 dark:text-fog/80">
+        <div class="rounded-lg border border-graphite/10 bg-fog/50 px-3 py-2 shadow-sm dark:border-fog/20 dark:bg-graphite/70">
+          <dt class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Sessions this week</dt>
+          <dd class="text-lg font-semibold text-ink dark:text-white">{{weeklySummary.totalSessions}}</dd>
+        </div>
+        <div class="rounded-lg border border-graphite/10 bg-fog/50 px-3 py-2 shadow-sm dark:border-fog/20 dark:bg-graphite/70">
+          <dt class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Completed</dt>
+          <dd class="text-lg font-semibold text-ink dark:text-white">{{weeklySummary.completedSessions}}</dd>
+        </div>
+        <div class="rounded-lg border border-graphite/10 bg-fog/50 px-3 py-2 shadow-sm dark:border-fog/20 dark:bg-graphite/70">
+          <dt class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">In progress</dt>
+          <dd class="text-lg font-semibold text-ink dark:text-white">{{weeklySummary.inProgressSessions}}</dd>
+        </div>
+        <div class="rounded-lg border border-graphite/10 bg-fog/50 px-3 py-2 shadow-sm dark:border-fog/20 dark:bg-graphite/70">
+          <dt class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Logged minutes</dt>
+          <dd class="text-lg font-semibold text-ink dark:text-white">{{weeklySummary.totalDurationMinutes}}</dd>
+        </div>
+      </dl>
     </div>
-    <form
-      hx-post="/workouts"
-      hx-target="#workout-list"
-      hx-swap="afterbegin"
-      hx-indicator="#submit-indicator"
-      hx-on::after-request="this.reset()"
-      class="grid gap-4 md:grid-cols-2"
-    >
-      <div class="flex flex-col gap-2">
-        <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="name">Workout name</label>
-        <input
-          id="name"
-          name="name"
-          type="text"
-          required
-          placeholder="Upper body session"
-          class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
-          {{#unless supabaseReady}}disabled{{/unless}}
-        />
-      </div>
-      <div class="flex flex-col gap-2">
-        <label class="text-sm font-medium text-graphite/80 dark:text-fog/80" for="performed_at">Performed at</label>
-        <input
-          id="performed_at"
-          name="performed_at"
-          type="datetime-local"
-          required
-          class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
-          {{#unless supabaseReady}}disabled{{/unless}}
-        />
-      </div>
-      <div class="md:col-span-2">
-        <label class="mb-2 block text-sm font-medium text-graphite/80 dark:text-fog/80" for="notes">Notes</label>
-        <textarea
-          id="notes"
-          name="notes"
-          rows="3"
-          placeholder="PR on bench press."
-          class="w-full rounded-lg border border-graphite/20 px-3 py-2 text-sm text-graphite shadow-sm focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 dark:border-fog/15 dark:bg-graphite dark:text-fog dark:placeholder:text-fog/50 dark:focus:border-teal dark:focus:ring-teal/40"
-          {{#unless supabaseReady}}disabled{{/unless}}
-        ></textarea>
-      </div>
-      <div class="flex items-center gap-3 md:col-span-2">
-        <button
-          type="submit"
-          class="inline-flex items-center gap-2 rounded-lg bg-teal px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-dark focus:outline-none focus:ring-2 focus:ring-teal/40 dark:bg-orange dark:hover:bg-orange-dark dark:focus:ring-orange/40"
-          {{#unless supabaseReady}}disabled{{/unless}}
-        >
-          Save workout
-        </button>
-        <span id="submit-indicator" class="htmx-indicator text-sm text-graphite/70 dark:text-fog/70">Saving…</span>
-      </div>
-    </form>
   </section>
 
-  <section class="flex flex-col gap-4">
-    <div class="flex items-center justify-between">
-      <h2 class="text-lg font-semibold text-ink dark:text-white">Recent workouts</h2>
-      <button
-        type="button"
-        class="text-sm font-semibold text-teal hover:text-teal-dark dark:text-orange dark:hover:text-orange-dark"
-        hx-get="/workouts/fragment"
-        hx-target="#workout-list"
-        hx-swap="innerHTML"
-      >
-        Refresh
-      </button>
+  <section class="rounded-xl bg-white p-6 shadow-lg ring-1 ring-graphite/10 dark:bg-graphite dark:text-fog dark:ring-graphite/40">
+    <header class="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
+      <div>
+        <h2 class="text-lg font-semibold text-ink dark:text-white">Weekly activity</h2>
+        <p class="text-xs uppercase tracking-wide text-graphite/60 dark:text-fog/60">Week {{planWeekIndex}} · {{weekRangeLabel}}</p>
+      </div>
+      <a href="/tracking/sessions" class="text-sm font-semibold text-teal hover:text-teal-dark dark:text-orange dark:hover:text-orange-dark">Open Session Tracker</a>
+    </header>
+
+    <div class="mt-4 overflow-x-auto">
+      <table class="min-w-full divide-y divide-graphite/15 text-xs text-graphite/80 dark:divide-fog/20 dark:text-fog/80">
+        <thead class="bg-fog/80 text-[11px] uppercase tracking-wide text-graphite/60 dark:bg-graphite/70 dark:text-fog/60">
+          <tr>
+            <th scope="col" class="w-40 px-3 py-2 text-left font-semibold">Week {{planWeekIndex}}</th>
+            {{#each weeklyDays}}
+              <th scope="col" class="min-w-[140px] px-3 py-2 text-left font-semibold">{{label}}</th>
+            {{/each}}
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="align-top">
+            <th scope="row" class="bg-fog/60 px-3 py-3 text-left text-sm font-semibold text-ink dark:bg-graphite/70 dark:text-white">Activity</th>
+            {{#each weeklyDays}}
+              <td class="space-y-2 px-3 py-3">
+                {{#if workouts.length}}
+                  <ul class="space-y-1 text-[11px]">
+                    {{#each workouts}}
+                      <li class="flex items-center gap-2 rounded border border-graphite/10 bg-white/80 px-2 py-1 dark:border-fog/20 dark:bg-graphite/60">
+                        <span class="inline-flex h-2 w-2 flex-none rounded-full bg-teal/40 dark:bg-orange/50"></span>
+                        <span class="text-graphite/80 dark:text-fog/80">{{name}}</span>
+                      </li>
+                    {{/each}}
+                  </ul>
+                {{else}}
+                  <span class="text-[11px] text-graphite/40 dark:text-fog/40">No workouts scheduled</span>
+                {{/if}}
+
+                {{#if sessions.length}}
+                  <div class="flex flex-col gap-1">
+                    {{#each sessions}}
+                      <span class="inline-flex items-center gap-2 rounded-full border border-teal/40 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-teal-dark dark:border-orange/40 dark:text-orange">
+                        {{capitalize status}}
+                        {{#if duration_minutes}}
+                          · {{duration_minutes}} min
+                        {{/if}}
+                      </span>
+                    {{/each}}
+                  </div>
+                {{else}}
+                  <span class="block text-[11px] text-graphite/40 dark:text-fog/40">No session logged</span>
+                {{/if}}
+              </td>
+            {{/each}}
+          </tr>
+        </tbody>
+      </table>
     </div>
-    <div
-      id="workout-list"
-      class="grid gap-3"
-      hx-get="/workouts/fragment"
-      hx-trigger="load"
-      hx-swap="innerHTML"
-    >
-      {{> workouts/list workouts=workouts supabaseReady=supabaseReady}}
-    </div>
+  </section>
+
+  <section class="rounded-xl bg-white p-6 shadow-lg ring-1 ring-graphite/10 dark:bg-graphite dark:text-fog dark:ring-graphite/40">
+    <header class="flex items-center justify-between">
+      <h2 class="text-lg font-semibold text-ink dark:text-white">Recent sessions</h2>
+      <a href="/tracking/sessions" class="text-sm font-semibold text-teal hover:text-teal-dark dark:text-orange dark:hover:text-orange-dark">Open tracker</a>
+    </header>
+    {{#if recentSessions.length}}
+      <ul class="mt-4 space-y-3 text-sm text-graphite/80 dark:text-fog/80">
+        {{#each recentSessions}}
+          <li class="flex items-center justify-between rounded-lg border border-graphite/10 bg-fog/60 px-3 py-2 dark:border-fog/20 dark:bg-graphite/60">
+            <div class="flex flex-col">
+              <span class="font-semibold text-ink dark:text-white">{{#if plan_name}}{{plan_name}}{{else}}Session {{id}}{{/if}}</span>
+              <span class="text-xs uppercase tracking-wide text-graphite/60 dark:text-fog/60">{{formatDate started_at}}</span>
+            </div>
+            <span class="text-xs font-semibold uppercase tracking-wide {{#if (eq status 'completed')}}text-teal dark:text-orange{{else if (eq status 'in-progress')}}text-graphite/70 dark:text-fog/70{{else}}text-graphite/50 dark:text-fog/50{{/if}}">{{capitalize status}}</span>
+          </li>
+        {{/each}}
+      </ul>
+    {{else}}
+      <p class="mt-4 rounded-lg border border-graphite/10 bg-fog/60 px-3 py-2 text-sm text-graphite/70 dark:border-fog/20 dark:bg-graphite/60 dark:text-fog/70">No sessions logged this week yet. Start a workout from the tracker to see history here.</p>
+    {{/if}}
   </section>
 </main>

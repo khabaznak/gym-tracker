@@ -141,17 +141,152 @@ app.use('/exercises', exercisesRouter);
 
 app.get('/', async (_req, res) => {
   const supabaseReady = Boolean(supabaseClient);
-  const { workouts, error } = await fetchRecentWorkouts(supabaseClient);
+  const today = new Date();
+  const { start: weekStart, end: weekEnd } = getIsoWeekBounds(today);
 
-  if (error) {
-    console.error('Failed to prefetch workouts for home view', error);
+  let activePlan = null;
+  let planWeekIndex = 1;
+  let weeklySchedule = null;
+  let weeklyAssignments = [];
+  let planError = null;
+
+  if (supabaseClient) {
+    const { plan: fetchedPlan, error: activePlanError } = await plansModule.fetchActivePlan(supabaseClient);
+
+    if (activePlanError) {
+      console.error('Failed to load active plan for dashboard', activePlanError);
+      planError = 'Unable to load active plan details.';
+    } else if (fetchedPlan) {
+      activePlan = fetchedPlan;
+      planWeekIndex = determinePlanWeek(activePlan, today);
+
+      if (activePlan.schedule && Array.isArray(activePlan.schedule.weeks)) {
+        const targetWeek = activePlan.schedule.weeks.find((week) => week.number === planWeekIndex)
+          || activePlan.schedule.weeks[0];
+
+        if (targetWeek) {
+          weeklySchedule = targetWeek;
+          weeklyAssignments = (targetWeek.days || []).map((day) => ({
+            day_index: day.day_index,
+            day_name: day.day_name,
+            workouts: Array.isArray(day.workouts) ? day.workouts : [],
+          }));
+        }
+      }
+    } else {
+      const { plans: fallbackPlans, error: plansError } = await plansModule.fetchPlans(supabaseClient, { limit: 10 });
+      if (plansError) {
+        console.error('Failed to load plans for dashboard fallback', plansError);
+      } else if (Array.isArray(fallbackPlans) && fallbackPlans.length) {
+        const candidate = fallbackPlans.find((plan) => plan && plan.status === 'active');
+        if (candidate) {
+          activePlan = candidate;
+          planWeekIndex = determinePlanWeek(activePlan, today);
+
+          if (activePlan.schedule && Array.isArray(activePlan.schedule.weeks)) {
+            const targetWeek = activePlan.schedule.weeks.find((week) => week.number === planWeekIndex)
+              || activePlan.schedule.weeks[0];
+
+            if (targetWeek) {
+              weeklySchedule = targetWeek;
+              weeklyAssignments = (targetWeek.days || []).map((day) => ({
+                day_index: day.day_index,
+                day_name: day.day_name,
+                workouts: Array.isArray(day.workouts) ? day.workouts : [],
+              }));
+            }
+          }
+        }
+      }
+    }
   }
 
+  const weeklySessionsResult = await fetchSessionsForRange(supabaseClient, weekStart, weekEnd);
+  if (weeklySessionsResult.error) {
+    console.error('Failed to load sessions for dashboard', weeklySessionsResult.error);
+  }
+  const weeklySessions = weeklySessionsResult.sessions;
+
+  const sessionsByDay = new Map();
+  weeklySessions.forEach((session) => {
+    const dayIndex = clampDay(session.day_index || getIsoDayNumber(new Date(session.started_at)));
+    if (!sessionsByDay.has(dayIndex)) {
+      sessionsByDay.set(dayIndex, []);
+    }
+    sessionsByDay.get(dayIndex).push(session);
+  });
+
+  const dayHeaders = activePlan && activePlan.schedule && Array.isArray(activePlan.schedule.dayHeaders)
+    ? activePlan.schedule.dayHeaders
+    : [
+        { key: 'mon', label: 'Monday' },
+        { key: 'tue', label: 'Tuesday' },
+        { key: 'wed', label: 'Wednesday' },
+        { key: 'thu', label: 'Thursday' },
+        { key: 'fri', label: 'Friday' },
+        { key: 'sat', label: 'Saturday' },
+        { key: 'sun', label: 'Sunday' },
+      ];
+
+  const weeklyDays = dayHeaders.map((header, index) => {
+    const dayIndex = index + 1;
+    const assigned = weeklyAssignments.find((day) => Number(day.day_index) === dayIndex);
+    const sessions = sessionsByDay.get(dayIndex) || [];
+
+    let status = 'idle';
+    if (sessions.some((session) => session.status === 'in-progress')) {
+      status = 'in-progress';
+    } else if (sessions.some((session) => session.status === 'completed')) {
+      status = 'completed';
+    }
+
+    return {
+      key: header.key,
+      label: header.label,
+      dayIndex,
+      workouts: assigned ? assigned.workouts : [],
+      sessions,
+      status,
+    };
+  });
+
+  const weeklySummary = {
+    totalSessions: weeklySessions.length,
+    completedSessions: weeklySessions.filter((session) => session.status === 'completed').length,
+    inProgressSessions: weeklySessions.filter((session) => session.status === 'in-progress').length,
+    totalDurationMinutes: weeklySessions.reduce((accumulator, session) => {
+      if (Number.isFinite(session.duration_seconds)) {
+        return accumulator + Math.round(session.duration_seconds / 60);
+      }
+      return accumulator;
+    }, 0),
+  };
+
+  const recentSessions = weeklySessions
+    .slice()
+    .sort((left, right) => new Date(right.started_at).getTime() - new Date(left.started_at).getTime())
+    .slice(0, 5);
+
+  const dateFormatter = new Intl.DateTimeFormat('en', {
+    month: 'short',
+    day: 'numeric',
+  });
+
+  const weekRangeLabel = `${dateFormatter.format(weekStart)} – ${dateFormatter.format(weekEnd)}`;
+
   res.render('home', {
-    pageTitle: 'Home',
+    pageTitle: 'Dashboard',
     supabaseReady,
-    workouts,
     activeNav: 'dashboard',
+    activePlan,
+    planWeekIndex,
+    weeklyDays,
+    weeklySummary,
+    planError,
+    weekStart,
+    weekEnd,
+    weekRangeLabel,
+    recentSessions,
   });
 });
 
@@ -503,6 +638,30 @@ async function fetchExercises(supabase) {
   return { exercises: data || [], error };
 }
 
+async function fetchSessionsForRange(supabase, start, end) {
+  if (!supabase || !start || !end) {
+    return { sessions: [], error: null };
+  }
+
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('id, plan_id, plan_name, status, mode, day_index, week_index, started_at, ended_at, duration_seconds')
+    .gte('started_at', start.toISOString())
+    .lte('started_at', end.toISOString())
+    .order('started_at', { ascending: true });
+
+  const sessions = Array.isArray(data)
+    ? data.map((session) => ({
+        ...session,
+        duration_minutes: Number.isFinite(session.duration_seconds)
+          ? Math.round(session.duration_seconds / 60)
+          : null,
+      }))
+    : [];
+
+  return { sessions, error };
+}
+
 function determinePlanWeek(plan, referenceDate = new Date()) {
   if (!plan) {
     return 1;
@@ -526,6 +685,39 @@ function determinePlanWeek(plan, referenceDate = new Date()) {
 function getIsoDayNumber(date = new Date()) {
   const jsDay = date.getDay();
   return ((jsDay + 6) % 7) + 1;
+}
+
+function getIsoWeekBounds(date = new Date()) {
+  const input = new Date(date);
+  input.setHours(0, 0, 0, 0);
+  const dayIndex = getIsoDayNumber(input);
+
+  const start = new Date(input);
+  start.setDate(input.getDate() - (dayIndex - 1));
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+
+  return { start, end };
+}
+
+function clampDay(value) {
+  const numeric = Number.parseInt(value, 10);
+  if (!Number.isFinite(numeric)) {
+    return 1;
+  }
+
+  if (numeric < 1) {
+    return 1;
+  }
+
+  if (numeric > 7) {
+    return 7;
+  }
+
+  return numeric;
 }
 
 function buildExerciseSessionEntry(exercise, index = 0) {
