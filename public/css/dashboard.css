@@ -1,39 +1,39 @@
-[data-activity-cell][data-intensity="0"] {
-  background-color: rgba(148, 163, 184, 0.25); /* gray-400 */
+.heatmap-table {
+  border-collapse: separate;
+  border-spacing: 4px;
 }
 
-[data-activity-cell][data-intensity="1"] {
-  background-color: rgba(56, 189, 248, 0.35); /* sky-400 */
+.heatmap-row {
+  display: flex;
+  gap: 4px;
 }
 
-[data-activity-cell][data-intensity="2"] {
-  background-color: rgba(14, 165, 233, 0.55); /* sky-500 */
+.heatmap-cell {
+  width: 16px;
+  height: 16px;
 }
 
-[data-activity-cell][data-intensity="3"] {
-  background-color: rgba(2, 132, 199, 0.75); /* sky-600 */
+.heatmap-dot {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+  background-color: rgba(148, 163, 184, 0.3);
+  transition: transform 0.15s ease;
 }
 
-[data-activity-cell][data-intensity="4"] {
-  background-color: rgba(3, 105, 161, 0.95); /* sky-700 */
+.heatmap-dot:hover {
+  transform: scale(1.1);
 }
 
-.dark [data-activity-cell][data-intensity="0"] {
-  background-color: rgba(75, 85, 99, 0.4);
-}
+.heatmap-dot[data-intensity='0'] { background-color: rgba(148, 163, 184, 0.3); }
+.heatmap-dot[data-intensity='1'] { background-color: rgba(56, 189, 248, 0.4); }
+.heatmap-dot[data-intensity='2'] { background-color: rgba(14, 165, 233, 0.6); }
+.heatmap-dot[data-intensity='3'] { background-color: rgba(2, 132, 199, 0.8); }
+.heatmap-dot[data-intensity='4'] { background-color: rgba(3, 105, 161, 1); }
 
-.dark [data-activity-cell][data-intensity="1"] {
-  background-color: rgba(249, 115, 22, 0.4);
-}
-
-.dark [data-activity-cell][data-intensity="2"] {
-  background-color: rgba(249, 115, 22, 0.6);
-}
-
-.dark [data-activity-cell][data-intensity="3"] {
-  background-color: rgba(234, 88, 12, 0.8);
-}
-
-.dark [data-activity-cell][data-intensity="4"] {
-  background-color: rgba(194, 65, 12, 1);
-}
+.dark .heatmap-dot[data-intensity='0'] { background-color: rgba(75, 85, 99, 0.3); }
+.dark .heatmap-dot[data-intensity='1'] { background-color: rgba(249, 115, 22, 0.35); }
+.dark .heatmap-dot[data-intensity='2'] { background-color: rgba(249, 115, 22, 0.55); }
+.dark .heatmap-dot[data-intensity='3'] { background-color: rgba(234, 88, 12, 0.75); }
+.dark .heatmap-dot[data-intensity='4'] { background-color: rgba(194, 65, 12, 0.95); }

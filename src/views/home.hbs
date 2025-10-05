@@ -15,10 +15,39 @@
                 <p class="text-xs uppercase tracking-wide text-graphite/60 dark:text-fog/60">Label: {{activePlan.label}}</p>
               {{/if}}
               <p class="text-xs uppercase tracking-wide text-graphite/60 dark:text-fog/60">Status: <span class="font-semibold {{#if (eq activePlan.status 'active')}}text-teal dark:text-orange{{else}}text-graphite/70 dark:text-fog/70{{/if}}">{{capitalize activePlan.status}}</span></p>
+            </div>
+            <div class="mt-4 space-y-2">
+              <div class="flex items-center justify-between">
+                <p class="text-xs uppercase tracking-wide text-graphite/60 dark:text-fog/60">Recent activity</p>
+                <span class="text-xs text-graphite/50 dark:text-fog/60">More color = more sessions</span>
               </div>
-            {{else}}
-              <p class="rounded-lg border border-graphite/10 bg-fog/60 px-3 py-2 text-sm text-graphite/70 dark:border-fog/20 dark:bg-graphite/60 dark:text-fog/70">No active plan yet. Activate one in Manage Plans to populate your dashboard.</p>
-            {{/if}}
+              {{#if activityHeatmap.length}}
+                <div class="overflow-x-auto">
+                  <table class="heatmap-table">
+                    <tbody>
+                      {{#each activityHeatmap}}
+                        <tr class="heatmap-row">
+                          {{#each this}}
+                            <td class="heatmap-cell">
+                              <span
+                                class="heatmap-dot"
+                                title="{{formatDate date}} · {{total}} session(s)"
+                                data-intensity="{{intensity}}"
+                              ></span>
+                            </td>
+                          {{/each}}
+                        </tr>
+                      {{/each}}
+                    </tbody>
+                  </table>
+                </div>
+              {{else}}
+                <p class="rounded-lg border border-graphite/10 bg-fog/60 px-3 py-2 text-xs text-graphite/60 dark:border-fog/20 dark:bg-graphite/60 dark:text-fog/70">No recent session data yet. Complete a session to see trends here.</p>
+              {{/if}}
+            </div>
+          {{else}}
+            <p class="rounded-lg border border-graphite/10 bg-fog/60 px-3 py-2 text-sm text-graphite/70 dark:border-fog/20 dark:bg-graphite/60 dark:text-fog/70">No active plan yet. Activate one in Manage Plans to populate your dashboard.</p>
+          {{/if}}
         {{else}}
           <p class="rounded-lg border border-graphite/10 bg-fog/60 px-3 py-2 text-sm text-graphite/70 dark:border-fog/20 dark:bg-graphite/60 dark:text-fog/70">Connect Supabase to load plan and session data.</p>
         {{/if}}
@@ -151,35 +180,4 @@
     {{/if}}
   </section>
 
-  <section class="rounded-xl bg-white p-6 shadow-lg ring-1 ring-graphite/10 dark:bg-graphite dark:text-fog dark:ring-graphite/40">
-    <header class="flex items-center justify-between">
-      <h2 class="text-lg font-semibold text-ink dark:text-white">Last month activity</h2>
-      <span class="text-xs uppercase tracking-wide text-graphite/60 dark:text-fog/60">More color = more sessions</span>
-    </header>
-    {{#if activityHeatmap.length}}
-      <div class="mt-4 overflow-x-auto">
-        <table class="min-w-full text-[11px] text-graphite/70 dark:text-fog/70">
-          <tbody>
-            {{#each activityHeatmap}}
-              <tr class="grid grid-flow-col auto-cols-max gap-1">
-                {{#each this}}
-                  <td>
-                    <span
-                      class="block h-3 w-3 rounded"
-                      title="{{formatDate date}} · {{total}} session(s)"
-                      data-activity-cell
-                      data-intensity="{{intensity}}"
-                      data-status="{{status}}"
-                    ></span>
-                  </td>
-                {{/each}}
-              </tr>
-            {{/each}}
-          </tbody>
-        </table>
-      </div>
-    {{else}}
-      <p class="mt-4 rounded-lg border border-graphite/10 bg-fog/60 px-3 py-2 text-sm text-graphite/70 dark:border-fog/20 dark:bg-graphite/60 dark:text-fog/70">No recent session data yet. Complete a session to see the activity map populate.</p>
-    {{/if}}
-  </section>
 </main>
