@@ -794,7 +794,7 @@ function buildActivityHeatmap(sessions, start, end) {
     weekStart.setDate(startDate.getDate() + week * 7);
 
     const label = new Intl.DateTimeFormat('en', {
-      month: 'MMM',
+      month: 'short',
       day: 'numeric',
     }).format(weekStart);
 
