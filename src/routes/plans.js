@@ -810,7 +810,15 @@ function normalizeStatus(status) {
 function buildPlanSchedule(assignments = [], period = 'weekly') {
   const periodKey = PLAN_PERIODS.has(period) ? period : 'weekly';
   const weeksCount = MAX_WEEKS[periodKey] || 1;
-  const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const dayNames = [
+    { key: 'mon', label: 'Monday' },
+    { key: 'tue', label: 'Tuesday' },
+    { key: 'wed', label: 'Wednesday' },
+    { key: 'thu', label: 'Thursday' },
+    { key: 'fri', label: 'Friday' },
+    { key: 'sat', label: 'Saturday' },
+    { key: 'sun', label: 'Sunday' },
+  ];
 
   const buckets = new Map();
 
@@ -867,9 +875,12 @@ function buildPlanSchedule(assignments = [], period = 'weekly') {
         weekHasWorkouts = true;
       }
 
+      const dayMeta = dayNames[day - 1];
+
       days.push({
         day_index: day,
-        day_name: dayNames[day - 1],
+        day_key: dayMeta ? dayMeta.key : `day-${day}`,
+        day_name: dayMeta ? dayMeta.label : `Day ${day}`,
         workouts,
       });
     }
@@ -881,7 +892,11 @@ function buildPlanSchedule(assignments = [], period = 'weekly') {
     });
   }
 
-  return { weeks, hasWorkouts };
+  return {
+    weeks,
+    hasWorkouts,
+    dayHeaders: dayNames.map((day) => ({ key: day.key, label: day.label })),
+  };
 }
 
 function isRlsViolation(error) {

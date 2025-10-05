@@ -49,39 +49,43 @@
       {{#if schedule.hasWorkouts}}
         <div class="space-y-3">
           <p class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Schedule Overview</p>
-          <div class="grid gap-3 {{#if (eq period 'monthly')}}md:grid-cols-2 lg:grid-cols-2{{else if (eq period 'bi-weekly')}}md:grid-cols-2{{else}}md:grid-cols-1{{/if}}">
-            {{#each schedule.weeks}}
-              <section class="space-y-2 rounded-lg border border-graphite/10 bg-fog/60 p-3 text-xs text-graphite/80 dark:border-fog/20 dark:bg-graphite/70 dark:text-fog/80">
-                <header class="flex items-center justify-between">
-                  <h4 class="text-sm font-semibold text-ink dark:text-white">Week {{number}}</h4>
-                  {{#unless hasWorkouts}}
-                    <span class="rounded-full bg-graphite/10 px-2 py-1 text-[10px] uppercase tracking-wide text-graphite/60 dark:bg-graphite/80 dark:text-fog/60">No workouts</span>
-                  {{/unless}}
-                </header>
-                {{#if hasWorkouts}}
-                  <ul class="space-y-2">
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-graphite/15 text-xs text-graphite/80 dark:divide-fog/20 dark:text-fog/80">
+              <thead class="bg-fog/80 text-[11px] uppercase tracking-wide text-graphite/60 dark:bg-graphite/70 dark:text-fog/60">
+                <tr>
+                  <th scope="col" class="w-28 px-3 py-2 text-left font-semibold">Week</th>
+                  {{#each schedule.dayHeaders}}
+                    <th scope="col" class="min-w-[120px] px-3 py-2 text-left font-semibold">{{label}}</th>
+                  {{/each}}
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-graphite/10 dark:divide-fog/15">
+                {{#each schedule.weeks}}
+                  <tr class="align-top">
+                    <th scope="row" class="bg-fog/60 px-3 py-3 text-left font-semibold text-ink dark:bg-graphite/70 dark:text-white">Week {{number}}</th>
                     {{#each days}}
-                      {{#if workouts.length}}
-                        <li class="space-y-2 rounded-lg border border-graphite/10 bg-white/70 px-3 py-2 dark:border-fog/15 dark:bg-graphite/50">
-                          <p class="text-[11px] font-semibold uppercase tracking-wide text-graphite/70 dark:text-fog/70">{{day_name}}</p>
-                          <ul class="space-y-1 text-[11px]">
+                      <td class="px-3 py-3">
+                        {{#if workouts.length}}
+                          <ul class="space-y-1">
                             {{#each workouts}}
-                              <li class="flex items-center gap-2">
+                              <li class="flex items-center gap-2 rounded border border-graphite/10 bg-white/80 px-2 py-1 text-[11px] font-medium text-graphite/80 dark:border-fog/20 dark:bg-graphite/60 dark:text-fog/80">
                                 <span class="inline-flex h-2 w-2 flex-none rounded-full bg-teal/40 dark:bg-orange/50"></span>
-                                <span class="text-graphite/80 dark:text-fog/80">{{name}}</span>
+                                <span>{{name}}</span>
                                 {{#if position}}
                                   <span class="text-graphite/50 dark:text-fog/60">(#{{position}})</span>
                                 {{/if}}
                               </li>
                             {{/each}}
                           </ul>
-                        </li>
-                      {{/if}}
+                        {{else}}
+                          <span class="text-[11px] text-graphite/40 dark:text-fog/40">—</span>
+                        {{/if}}
+                      </td>
                     {{/each}}
-                  </ul>
-                {{/if}}
-              </section>
-            {{/each}}
+                  </tr>
+                {{/each}}
+              </tbody>
+            </table>
           </div>
         </div>
       {{else if assignments.length}}
