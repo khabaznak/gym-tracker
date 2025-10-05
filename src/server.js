@@ -704,13 +704,20 @@ async function fetchSessionsForRange(supabase, start, end) {
 }
 
 function buildActivityHeatmap(sessions, start, end) {
+  const dayLabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
   if (!Array.isArray(sessions) || !start || !end) {
-    return [];
+    return { dayLabels, weeks: [], maxMinutes: 0 };
   }
 
-  const dayCount = Math.max(Math.floor((end - start) / (24 * 60 * 60 * 1000)) + 1, 1);
-  const cells = [];
-  const sessionByDate = new Map();
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const startDate = new Date(start);
+  startDate.setHours(0, 0, 0, 0);
+  const endDate = new Date(end);
+  endDate.setHours(0, 0, 0, 0);
+
+  const dayCount = Math.max(Math.floor((endDate - startDate) / msPerDay) + 1, 1);
+  const minutesByDate = new Map();
 
   sessions.forEach((session) => {
     if (!session || !session.started_at) {
@@ -718,42 +725,100 @@ function buildActivityHeatmap(sessions, start, end) {
     }
 
     const date = new Date(session.started_at);
+    date.setHours(0, 0, 0, 0);
     const key = date.toISOString().slice(0, 10);
-    if (!sessionByDate.has(key)) {
-      sessionByDate.set(key, []);
-    }
-    sessionByDate.get(key).push(session);
+    const minutes = Number.isFinite(session.duration_minutes)
+      ? session.duration_minutes
+      : Number.isFinite(session.duration_seconds)
+        ? Math.round(session.duration_seconds / 60)
+        : 0;
+
+    minutesByDate.set(key, (minutesByDate.get(key) || 0) + minutes);
   });
 
-  for (let index = 0; index < dayCount; index += 1) {
-    const date = new Date(start);
-    date.setDate(start.getDate() + index);
-    const key = date.toISOString().slice(0, 10);
-    const entries = sessionByDate.get(key) || [];
+  const cells = [];
+  let maxMinutes = 0;
 
-    const completedCount = entries.filter((session) => session.status === 'completed').length;
-    const inProgressCount = entries.filter((session) => session.status === 'in-progress').length;
-    const intensity = Math.min(entries.length, 4);
+  for (let index = 0; index < dayCount; index += 1) {
+    const date = new Date(startDate);
+    date.setDate(startDate.getDate() + index);
+    const isoDate = date.toISOString().slice(0, 10);
+    const minutes = minutesByDate.get(isoDate) || 0;
+    maxMinutes = Math.max(maxMinutes, minutes);
 
     cells.push({
       date,
-      isoDay: getIsoDayNumber(date),
-      weekIndex: Math.floor(index / 7),
-      total: entries.length,
-      completed: completedCount,
-      inProgress: inProgressCount,
-      status: entries.length === 0 ? 'none' : completedCount >= entries.length ? 'completed' : 'partial',
-      intensity,
+      isoDate,
+      minutes,
     });
   }
 
-  const grouped = [];
+  const thresholds = (() => {
+    if (maxMinutes <= 0) {
+      return [0, 0, 0];
+    }
+
+    const quarter = Math.max(1, Math.round(maxMinutes / 4));
+    return [quarter, quarter * 2, quarter * 3];
+  })();
+
+  const intensityForMinutes = (minutes) => {
+    if (!Number.isFinite(minutes) || minutes <= 0) {
+      return 0;
+    }
+
+    if (minutes <= thresholds[0]) {
+      return 1;
+    }
+
+    if (minutes <= thresholds[1]) {
+      return 2;
+    }
+
+    if (minutes <= thresholds[2]) {
+      return 3;
+    }
+
+    return 4;
+  };
+
+  cells.forEach((cell) => {
+    cell.intensity = intensityForMinutes(cell.minutes);
+  });
+
   const weekCount = Math.ceil(cells.length / 7);
+  const weeks = [];
+
   for (let week = 0; week < weekCount; week += 1) {
-    grouped.push(cells.slice(week * 7, week * 7 + 7));
+    const weekStart = new Date(startDate);
+    weekStart.setDate(startDate.getDate() + week * 7);
+
+    const label = new Intl.DateTimeFormat('en', {
+      month: 'MMM',
+      day: 'numeric',
+    }).format(weekStart);
+
+    const column = [];
+    for (let day = 0; day < 7; day += 1) {
+      const index = week * 7 + day;
+      if (index < cells.length) {
+        column.push(cells[index]);
+      } else {
+        const date = new Date(weekStart);
+        date.setDate(weekStart.getDate() + day);
+        column.push({
+          date,
+          isoDate: date.toISOString().slice(0, 10),
+          minutes: 0,
+          intensity: 0,
+        });
+      }
+    }
+
+    weeks.push({ label, cells: column });
   }
 
-  return grouped;
+  return { dayLabels, weeks, maxMinutes };
 }
 
 function determinePlanWeek(plan, referenceDate = new Date()) {

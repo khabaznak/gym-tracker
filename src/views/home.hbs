@@ -19,22 +19,33 @@
             <div class="mt-4 space-y-2">
               <div class="flex items-center justify-between">
                 <p class="text-xs uppercase tracking-wide text-graphite/60 dark:text-fog/60">Recent activity</p>
-                <span class="text-xs text-graphite/50 dark:text-fog/60">More color = more sessions</span>
+                <span class="text-xs text-graphite/50 dark:text-fog/60">More color = more minutes logged</span>
               </div>
-              {{#if activityHeatmap.length}}
+              {{#if activityHeatmap.weeks.length}}
                 <div class="overflow-x-auto">
-                  <table class="heatmap-table">
+                  <table class="heatmap-table text-[11px] text-graphite/70 dark:text-fog/70">
+                    <thead>
+                      <tr>
+                        <th class="heatmap-corner"></th>
+                        {{#each activityHeatmap.weeks}}
+                          <th class="heatmap-week">{{label}}</th>
+                        {{/each}}
+                      </tr>
+                    </thead>
                     <tbody>
-                      {{#each activityHeatmap}}
-                        <tr class="heatmap-row">
-                          {{#each this}}
-                            <td class="heatmap-cell">
-                              <span
-                                class="heatmap-dot"
-                                title="{{formatDate date}} · {{total}} session(s)"
-                                data-intensity="{{intensity}}"
-                              ></span>
-                            </td>
+                      {{#each activityHeatmap.dayLabels}}
+                        <tr>
+                          <th class="heatmap-day">{{this}}</th>
+                          {{#each ../activityHeatmap.weeks}}
+                            {{#with (lookup this.cells @../index) as |cell|}}
+                              <td>
+                                <span
+                                  class="heatmap-dot"
+                                  data-intensity="{{cell.intensity}}"
+                                  title="{{formatDate cell.isoDate}} · {{cell.minutes}} minute(s)"
+                                ></span>
+                              </td>
+                            {{/with}}
                           {{/each}}
                         </tr>
                       {{/each}}
