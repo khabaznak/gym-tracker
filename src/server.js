@@ -38,6 +38,24 @@ app.engine(
       eq(left, right) {
         return left === right;
       },
+      add(left, right) {
+        const a = Number(left);
+        const b = Number(right);
+        if (!Number.isFinite(a) || !Number.isFinite(b)) {
+          return 0;
+        }
+
+        return a + b;
+      },
+      gte(left, right) {
+        const a = Number(left);
+        const b = Number(right);
+        if (!Number.isFinite(a) || !Number.isFinite(b)) {
+          return false;
+        }
+
+        return a >= b;
+      },
       includes(collection, value) {
         if (!Array.isArray(collection)) {
           return false;
@@ -115,6 +133,7 @@ app.use((req, _res, next) => {
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use('/css/dashboard.css', express.static(path.join(__dirname, '..', 'public/css/dashboard.css')));
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
@@ -139,10 +158,22 @@ app.use('/plans', plansRouter);
 app.use('/sessions', sessionsRouter);
 app.use('/exercises', exercisesRouter);
 
-app.get('/', async (_req, res) => {
+app.get('/', async (req, res) => {
   const supabaseReady = Boolean(supabaseClient);
   const today = new Date();
-  const { start: weekStart, end: weekEnd } = getIsoWeekBounds(today);
+
+  const viewDate = (() => {
+    const queryValue = typeof req.query.weekOffset === 'string' ? parseInt(req.query.weekOffset, 10) : 0;
+    if (Number.isFinite(queryValue) && queryValue !== 0) {
+      const offsetDate = new Date(today);
+      offsetDate.setDate(offsetDate.getDate() + queryValue * 7);
+      return offsetDate;
+    }
+    return today;
+  })();
+
+  const weekOffset = Math.floor((viewDate - today) / (7 * 24 * 60 * 60 * 1000));
+  const { start: weekStart, end: weekEnd } = getIsoWeekBounds(viewDate);
 
   let activePlan = null;
   let planWeekIndex = 1;
@@ -274,6 +305,13 @@ app.get('/', async (_req, res) => {
 
   const weekRangeLabel = `${dateFormatter.format(weekStart)} – ${dateFormatter.format(weekEnd)}`;
 
+  const heatmapStart = new Date(today);
+  heatmapStart.setMonth(today.getMonth() - 1);
+  const heatmapEnd = new Date(today);
+  const recentActivityResult = await fetchSessionsForRange(supabaseClient, heatmapStart, heatmapEnd);
+  const recentActivitySessions = recentActivityResult.error ? [] : recentActivityResult.sessions;
+  const activityHeatmap = buildActivityHeatmap(recentActivitySessions, heatmapStart, heatmapEnd);
+
   res.render('home', {
     pageTitle: 'Dashboard',
     supabaseReady,
@@ -285,8 +323,11 @@ app.get('/', async (_req, res) => {
     planError,
     weekStart,
     weekEnd,
+    weekOffset,
     weekRangeLabel,
     recentSessions,
+    currentWeekOffset: weekOffset,
+    activityHeatmap,
   });
 });
 
@@ -660,6 +701,59 @@ async function fetchSessionsForRange(supabase, start, end) {
     : [];
 
   return { sessions, error };
+}
+
+function buildActivityHeatmap(sessions, start, end) {
+  if (!Array.isArray(sessions) || !start || !end) {
+    return [];
+  }
+
+  const dayCount = Math.max(Math.floor((end - start) / (24 * 60 * 60 * 1000)) + 1, 1);
+  const cells = [];
+  const sessionByDate = new Map();
+
+  sessions.forEach((session) => {
+    if (!session || !session.started_at) {
+      return;
+    }
+
+    const date = new Date(session.started_at);
+    const key = date.toISOString().slice(0, 10);
+    if (!sessionByDate.has(key)) {
+      sessionByDate.set(key, []);
+    }
+    sessionByDate.get(key).push(session);
+  });
+
+  for (let index = 0; index < dayCount; index += 1) {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    const key = date.toISOString().slice(0, 10);
+    const entries = sessionByDate.get(key) || [];
+
+    const completedCount = entries.filter((session) => session.status === 'completed').length;
+    const inProgressCount = entries.filter((session) => session.status === 'in-progress').length;
+    const intensity = Math.min(entries.length, 4);
+
+    cells.push({
+      date,
+      isoDay: getIsoDayNumber(date),
+      weekIndex: Math.floor(index / 7),
+      total: entries.length,
+      completed: completedCount,
+      inProgress: inProgressCount,
+      status: entries.length === 0 ? 'none' : completedCount >= entries.length ? 'completed' : 'partial',
+      intensity,
+    });
+  }
+
+  const grouped = [];
+  const weekCount = Math.ceil(cells.length / 7);
+  for (let week = 0; week < weekCount; week += 1) {
+    grouped.push(cells.slice(week * 7, week * 7 + 7));
+  }
+
+  return grouped;
 }
 
 function determinePlanWeek(plan, referenceDate = new Date()) {

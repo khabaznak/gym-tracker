@@ -15,10 +15,10 @@
                 <p class="text-xs uppercase tracking-wide text-graphite/60 dark:text-fog/60">Label: {{activePlan.label}}</p>
               {{/if}}
               <p class="text-xs uppercase tracking-wide text-graphite/60 dark:text-fog/60">Status: <span class="font-semibold {{#if (eq activePlan.status 'active')}}text-teal dark:text-orange{{else}}text-graphite/70 dark:text-fog/70{{/if}}">{{capitalize activePlan.status}}</span></p>
-            </div>
-          {{else}}
-            <p class="rounded-lg border border-graphite/10 bg-fog/60 px-3 py-2 text-sm text-graphite/70 dark:border-fog/20 dark:bg-graphite/60 dark:text-fog/70">No active plan yet. Activate one in Manage Plans to populate your dashboard.</p>
-          {{/if}}
+              </div>
+            {{else}}
+              <p class="rounded-lg border border-graphite/10 bg-fog/60 px-3 py-2 text-sm text-graphite/70 dark:border-fog/20 dark:bg-graphite/60 dark:text-fog/70">No active plan yet. Activate one in Manage Plans to populate your dashboard.</p>
+            {{/if}}
         {{else}}
           <p class="rounded-lg border border-graphite/10 bg-fog/60 px-3 py-2 text-sm text-graphite/70 dark:border-fog/20 dark:bg-graphite/60 dark:text-fog/70">Connect Supabase to load plan and session data.</p>
         {{/if}}
@@ -50,7 +50,30 @@
         <h2 class="text-lg font-semibold text-ink dark:text-white">Weekly activity</h2>
         <p class="text-xs uppercase tracking-wide text-graphite/60 dark:text-fog/60">Week {{planWeekIndex}} · {{weekRangeLabel}}</p>
       </div>
-      <a href="/tracking/sessions" class="text-sm font-semibold text-teal hover:text-teal-dark dark:text-orange dark:hover:text-orange-dark">Open Session Tracker</a>
+      <div class="flex items-center gap-2">
+        <form method="get" action="/" class="flex items-center gap-2">
+          <input type="hidden" name="weekOffset" value="{{add weekOffset -1}}" />
+          <button
+            type="submit"
+            class="inline-flex items-center gap-2 rounded-lg border border-graphite/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-graphite transition hover:border-graphite/40 hover:text-ink focus:outline-none focus:ring-2 focus:ring-graphite/30 dark:border-fog/30 dark:text-fog dark:hover:border-fog/60 dark:hover:text-white dark:focus:ring-fog/30"
+            {{#unless supabaseReady}}disabled{{/unless}}
+          >
+            Previous week
+          </button>
+        </form>
+        <form method="get" action="/" class="flex items-center gap-2">
+          <input type="hidden" name="weekOffset" value="{{add weekOffset 1}}" />
+          <button
+            type="submit"
+            class="inline-flex items-center gap-2 rounded-lg border border-graphite/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-graphite transition hover:border-graphite/40 hover:text-ink focus:outline-none focus:ring-2 focus:ring-graphite/30 dark:border-fog/30 dark:text-fog dark:hover:border-fog/60 dark:hover:text-white dark:focus:ring-fog/30"
+            {{#unless supabaseReady}}disabled{{/unless}}
+            {{#if (gte weekOffset 0)}}disabled{{/if}}
+          >
+            Next week
+          </button>
+        </form>
+        <a href="/tracking/sessions" class="text-sm font-semibold text-teal hover:text-teal-dark dark:text-orange dark:hover:text-orange-dark">Open Session Tracker</a>
+      </div>
     </header>
 
     <div class="mt-4 overflow-x-auto">
@@ -104,8 +127,11 @@
   </section>
 
   <section class="rounded-xl bg-white p-6 shadow-lg ring-1 ring-graphite/10 dark:bg-graphite dark:text-fog dark:ring-graphite/40">
-    <header class="flex items-center justify-between">
-      <h2 class="text-lg font-semibold text-ink dark:text-white">Recent sessions</h2>
+    <header class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+      <div>
+        <h2 class="text-lg font-semibold text-ink dark:text-white">Recent sessions</h2>
+        <p class="text-xs uppercase tracking-wide text-graphite/60 dark:text-fog/60">Last 5 entries</p>
+      </div>
       <a href="/tracking/sessions" class="text-sm font-semibold text-teal hover:text-teal-dark dark:text-orange dark:hover:text-orange-dark">Open tracker</a>
     </header>
     {{#if recentSessions.length}}
@@ -122,6 +148,38 @@
       </ul>
     {{else}}
       <p class="mt-4 rounded-lg border border-graphite/10 bg-fog/60 px-3 py-2 text-sm text-graphite/70 dark:border-fog/20 dark:bg-graphite/60 dark:text-fog/70">No sessions logged this week yet. Start a workout from the tracker to see history here.</p>
+    {{/if}}
+  </section>
+
+  <section class="rounded-xl bg-white p-6 shadow-lg ring-1 ring-graphite/10 dark:bg-graphite dark:text-fog dark:ring-graphite/40">
+    <header class="flex items-center justify-between">
+      <h2 class="text-lg font-semibold text-ink dark:text-white">Last month activity</h2>
+      <span class="text-xs uppercase tracking-wide text-graphite/60 dark:text-fog/60">More color = more sessions</span>
+    </header>
+    {{#if activityHeatmap.length}}
+      <div class="mt-4 overflow-x-auto">
+        <table class="min-w-full text-[11px] text-graphite/70 dark:text-fog/70">
+          <tbody>
+            {{#each activityHeatmap}}
+              <tr class="grid grid-flow-col auto-cols-max gap-1">
+                {{#each this}}
+                  <td>
+                    <span
+                      class="block h-3 w-3 rounded"
+                      title="{{formatDate date}} · {{total}} session(s)"
+                      data-activity-cell
+                      data-intensity="{{intensity}}"
+                      data-status="{{status}}"
+                    ></span>
+                  </td>
+                {{/each}}
+              </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+    {{else}}
+      <p class="mt-4 rounded-lg border border-graphite/10 bg-fog/60 px-3 py-2 text-sm text-graphite/70 dark:border-fog/20 dark:bg-graphite/60 dark:text-fog/70">No recent session data yet. Complete a session to see the activity map populate.</p>
     {{/if}}
   </section>
 </main>

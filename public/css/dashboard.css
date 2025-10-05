@@ -1,0 +1,39 @@
+[data-activity-cell][data-intensity="0"] {
+  background-color: rgba(148, 163, 184, 0.25); /* gray-400 */
+}
+
+[data-activity-cell][data-intensity="1"] {
+  background-color: rgba(56, 189, 248, 0.35); /* sky-400 */
+}
+
+[data-activity-cell][data-intensity="2"] {
+  background-color: rgba(14, 165, 233, 0.55); /* sky-500 */
+}
+
+[data-activity-cell][data-intensity="3"] {
+  background-color: rgba(2, 132, 199, 0.75); /* sky-600 */
+}
+
+[data-activity-cell][data-intensity="4"] {
+  background-color: rgba(3, 105, 161, 0.95); /* sky-700 */
+}
+
+.dark [data-activity-cell][data-intensity="0"] {
+  background-color: rgba(75, 85, 99, 0.4);
+}
+
+.dark [data-activity-cell][data-intensity="1"] {
+  background-color: rgba(249, 115, 22, 0.4);
+}
+
+.dark [data-activity-cell][data-intensity="2"] {
+  background-color: rgba(249, 115, 22, 0.6);
+}
+
+.dark [data-activity-cell][data-intensity="3"] {
+  background-color: rgba(234, 88, 12, 0.8);
+}
+
+.dark [data-activity-cell][data-intensity="4"] {
+  background-color: rgba(194, 65, 12, 1);
+}
