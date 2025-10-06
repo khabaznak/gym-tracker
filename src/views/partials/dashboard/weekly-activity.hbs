@@ -1,0 +1,87 @@
+<section
+  id="weekly-activity-card"
+  class="rounded-xl bg-white p-6 shadow-lg ring-1 ring-graphite/10 dark:bg-graphite dark:text-fog dark:ring-graphite/40"
+>
+  <header class="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
+    <div>
+      <h2 class="text-lg font-semibold text-ink dark:text-white">Weekly activity</h2>
+      <p class="text-xs uppercase tracking-wide text-graphite/60 dark:text-fog/60">Week {{planWeekIndex}} · {{weekRangeLabel}}</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button
+        type="button"
+        class="inline-flex items-center gap-2 rounded-lg border border-graphite/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-graphite transition hover:border-graphite/40 hover:text-ink focus:outline-none focus:ring-2 focus:ring-graphite/30 dark:border-fog/30 dark:text-fog dark:hover:border-fog/60 dark:hover:text-white dark:focus:ring-fog/30"
+        hx-get="/dashboard/week?weekOffset={{add weekOffset -1}}"
+        hx-target="#weekly-activity-card"
+        hx-swap="outerHTML"
+        hx-indicator="#weekly-activity-spinner"
+        {{#unless supabaseReady}}disabled{{/unless}}
+      >
+        Previous week
+      </button>
+      <button
+        type="button"
+        class="inline-flex items-center gap-2 rounded-lg border border-graphite/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-graphite transition hover:border-graphite/40 hover:text-ink focus:outline-none focus:ring-2 focus:ring-graphite/30 dark:border-fog/30 dark:text-fog dark:hover:border-fog/60 dark:hover:text-white dark:focus:ring-fog/30"
+        hx-get="/dashboard/week?weekOffset={{add weekOffset 1}}"
+        hx-target="#weekly-activity-card"
+        hx-swap="outerHTML"
+        hx-indicator="#weekly-activity-spinner"
+        {{#unless supabaseReady}}disabled{{/unless}}
+        {{#if (gte weekOffset 0)}}disabled{{/if}}
+      >
+        Next week
+      </button>
+      <a href="/tracking/sessions" class="text-sm font-semibold text-teal hover:text-teal-dark dark:text-orange dark:hover:text-orange-dark">Open tracker</a>
+    </div>
+  </header>
+
+  <div class="mt-4 overflow-x-auto">
+    <table class="min-w-full divide-y divide-graphite/15 text-xs text-graphite/80 dark:divide-fog/20 dark:text-fog/80">
+      <thead class="bg-fog/80 text-[11px] uppercase tracking-wide text-graphite/60 dark:bg-graphite/70 dark:text-fog/60">
+        <tr>
+          <th scope="col" class="w-40 px-3 py-2 text-left font-semibold">Week {{planWeekIndex}}</th>
+          {{#each weeklyDays}}
+            <th scope="col" class="min-w-[140px] px-3 py-2 text-left font-semibold">{{label}}</th>
+          {{/each}}
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="align-top">
+          <th scope="row" class="bg-fog/60 px-3 py-3 text-left text-sm font-semibold text-ink dark:bg-graphite/70 dark:text-white">Activity</th>
+          {{#each weeklyDays}}
+            <td class="space-y-2 px-3 py-3">
+              {{#if workouts.length}}
+                <ul class="space-y-1 text-[11px]">
+                  {{#each workouts}}
+                    <li class="flex items-center gap-2 rounded border border-graphite/10 bg-white/80 px-2 py-1 dark:border-fog/20 dark:bg-graphite/60">
+                      <span class="inline-flex h-2 w-2 flex-none rounded-full bg-teal/40 dark:bg-orange/50"></span>
+                      <span class="text-graphite/80 dark:text-fog/80">{{name}}</span>
+                    </li>
+                  {{/each}}
+                </ul>
+              {{else}}
+                <span class="text-[11px] text-graphite/40 dark:text-fog/40">No workouts scheduled</span>
+              {{/if}}
+
+              {{#if sessions.length}}
+                <div class="flex flex-col gap-1">
+                  {{#each sessions}}
+                    <span class="inline-flex items-center gap-2 rounded-full border border-teal/40 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-teal-dark dark:border-orange/40 dark:text-orange">
+                      {{capitalize status}}
+                      {{#if duration_minutes}}
+                        · {{duration_minutes}} min
+                      {{/if}}
+                    </span>
+                  {{/each}}
+                </div>
+              {{else}}
+                <span class="block text-[11px] text-graphite/40 dark:text-fog/40">No session logged</span>
+              {{/if}}
+            </td>
+          {{/each}}
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <span id="weekly-activity-spinner" class="htmx-indicator mt-3 inline-block text-xs text-graphite/60 dark:text-fog/60">Loading…</span>
+</section>

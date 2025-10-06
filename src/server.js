@@ -159,205 +159,28 @@ app.use('/sessions', sessionsRouter);
 app.use('/exercises', exercisesRouter);
 
 app.get('/', async (req, res) => {
-  const supabaseReady = Boolean(supabaseClient);
-  const today = new Date();
-
-  const viewDate = (() => {
-    const queryValue = typeof req.query.weekOffset === 'string' ? parseInt(req.query.weekOffset, 10) : 0;
-    if (Number.isFinite(queryValue) && queryValue !== 0) {
-      const offsetDate = new Date(today);
-      offsetDate.setDate(offsetDate.getDate() + queryValue * 7);
-      return offsetDate;
-    }
-    return today;
-  })();
-
-  const weekOffset = Math.floor((viewDate - today) / (7 * 24 * 60 * 60 * 1000));
-  const { start: weekStart, end: weekEnd } = getIsoWeekBounds(viewDate);
-
-  let activePlan = null;
-  let planWeekIndex = 1;
-  let weeklySchedule = null;
-  let weeklyAssignments = [];
-  let planError = null;
-
-  if (supabaseClient) {
-    const { plan: fetchedPlan, error: activePlanError } = await plansModule.fetchActivePlan(supabaseClient);
-
-    if (activePlanError) {
-      console.error('Failed to load active plan for dashboard', activePlanError);
-      planError = 'Unable to load active plan details.';
-    } else if (fetchedPlan) {
-      activePlan = fetchedPlan;
-      planWeekIndex = determinePlanWeek(activePlan, today);
-
-      if (activePlan.schedule && Array.isArray(activePlan.schedule.weeks)) {
-        const targetWeek = activePlan.schedule.weeks.find((week) => week.number === planWeekIndex)
-          || activePlan.schedule.weeks[0];
-
-        if (targetWeek) {
-          weeklySchedule = targetWeek;
-          weeklyAssignments = (targetWeek.days || []).map((day) => ({
-            day_index: day.day_index,
-            day_name: day.day_name,
-            workouts: Array.isArray(day.workouts) ? day.workouts : [],
-          }));
-        }
-      }
-    } else {
-      const { plans: fallbackPlans, error: plansError } = await plansModule.fetchPlans(supabaseClient, { limit: 10 });
-      if (plansError) {
-        console.error('Failed to load plans for dashboard fallback', plansError);
-      } else if (Array.isArray(fallbackPlans) && fallbackPlans.length) {
-        const candidate = fallbackPlans.find((plan) => plan && plan.status === 'active');
-        if (candidate) {
-          activePlan = candidate;
-          planWeekIndex = determinePlanWeek(activePlan, today);
-
-          if (activePlan.schedule && Array.isArray(activePlan.schedule.weeks)) {
-            const targetWeek = activePlan.schedule.weeks.find((week) => week.number === planWeekIndex)
-              || activePlan.schedule.weeks[0];
-
-            if (targetWeek) {
-              weeklySchedule = targetWeek;
-              weeklyAssignments = (targetWeek.days || []).map((day) => ({
-                day_index: day.day_index,
-                day_name: day.day_name,
-                workouts: Array.isArray(day.workouts) ? day.workouts : [],
-              }));
-            }
-          }
-        }
-      }
-    }
-  }
-
-  const weeklySessionsResult = await fetchSessionsForRange(supabaseClient, weekStart, weekEnd);
-  if (weeklySessionsResult.error) {
-    console.error('Failed to load sessions for dashboard', weeklySessionsResult.error);
-  }
-  const weeklySessions = weeklySessionsResult.sessions;
-
-  const sessionsByDay = new Map();
-  weeklySessions.forEach((session) => {
-    const startedAt = session.started_at ? new Date(session.started_at) : null;
-    const dayIndex = clampDay(session.day_index || getIsoDayNumber(startedAt || today));
-    if (!sessionsByDay.has(dayIndex)) {
-      sessionsByDay.set(dayIndex, []);
-    }
-    sessionsByDay.get(dayIndex).push(session);
-  });
-
-  const dayHeaders = activePlan && activePlan.schedule && Array.isArray(activePlan.schedule.dayHeaders)
-    ? activePlan.schedule.dayHeaders
-    : [
-        { key: 'mon', label: 'Monday' },
-        { key: 'tue', label: 'Tuesday' },
-        { key: 'wed', label: 'Wednesday' },
-        { key: 'thu', label: 'Thursday' },
-        { key: 'fri', label: 'Friday' },
-        { key: 'sat', label: 'Saturday' },
-        { key: 'sun', label: 'Sunday' },
-      ];
-
-  const weeklyDays = dayHeaders.map((header, index) => {
-    const dayIndex = index + 1;
-    const assigned = weeklyAssignments.find((day) => Number(day.day_index) === dayIndex);
-    const sessions = sessionsByDay.get(dayIndex) || [];
-
-    let status = 'idle';
-    if (sessions.some((session) => session.status === 'in-progress')) {
-      status = 'in-progress';
-    } else if (sessions.some((session) => session.status === 'completed')) {
-      status = 'completed';
-    }
-
-    return {
-      key: header.key,
-      label: header.label,
-      dayIndex,
-      workouts: assigned ? assigned.workouts : [],
-      sessions,
-      status,
-    };
-  });
-
-  const weeklyTotalMinutes = weeklySessions.reduce((accumulator, session) => {
-    if (Number.isFinite(session.duration_minutes)) {
-      return accumulator + session.duration_minutes;
-    }
-    if (Number.isFinite(session.duration_seconds)) {
-      return accumulator + Math.round(session.duration_seconds / 60);
-    }
-    return accumulator;
-  }, 0);
-
-  const weeklyActiveDays = new Set(
-    weeklySessions
-      .map((session) => {
-        if (!session.started_at) {
-          return null;
-        }
-        const date = new Date(session.started_at);
-        return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
-      })
-      .filter(Boolean)
-  ).size;
-
-  const weeklySummary = {
-    totalSessions: weeklySessions.length,
-    completedSessions: weeklySessions.filter((session) => session.status === 'completed').length,
-    inProgressSessions: weeklySessions.filter((session) => session.status === 'in-progress').length,
-    totalDurationMinutes: weeklyTotalMinutes,
-    avgMinutesPerActiveDay: weeklyActiveDays ? Math.round(weeklyTotalMinutes / weeklyActiveDays) : 0,
-    activeDayCount: weeklyActiveDays,
-  };
-
-  const recentSessions = weeklySessions
-    .slice()
-    .sort((left, right) => new Date(right.started_at).getTime() - new Date(left.started_at).getTime())
-    .slice(0, 5);
-
-  const dateFormatter = new Intl.DateTimeFormat('en', {
-    month: 'short',
-    day: 'numeric',
-  });
-
-  const weekRangeLabel = `${dateFormatter.format(weekStart)} – ${dateFormatter.format(weekEnd)}`;
-
-  const startOfRecentWindow = new Date(today);
-  startOfRecentWindow.setMonth(today.getMonth() - 1);
-  const { start: heatmapStart } = getIsoWeekBounds(startOfRecentWindow);
-  const { end: heatmapEnd } = getIsoWeekBounds(today);
-  const recentActivityResult = await fetchSessionsForRange(supabaseClient, heatmapStart, heatmapEnd);
-  const recentActivitySessions = recentActivityResult.error ? [] : recentActivityResult.sessions;
-  const activityHeatmap = buildActivityHeatmap(recentActivitySessions, heatmapStart, heatmapEnd);
-  const activitySummary = {
-    totalMinutes: activityHeatmap.totalMinutes,
-    avgMinutesPerActiveDay: activityHeatmap.activeDayCount
-      ? Math.round(activityHeatmap.totalMinutes / activityHeatmap.activeDayCount)
-      : 0,
-    activeDayCount: activityHeatmap.activeDayCount,
-    bestStreak: activityHeatmap.bestStreak,
-  };
+  const requestedOffset = typeof req.query.weekOffset === 'string' ? Number.parseInt(req.query.weekOffset, 10) : 0;
+  const context = await buildDashboardContext(Number.isFinite(requestedOffset) ? requestedOffset : 0);
 
   res.render('home', {
     pageTitle: 'Dashboard',
-    supabaseReady,
     activeNav: 'dashboard',
-    activePlan,
-    planWeekIndex,
-    weeklyDays,
-    weeklySummary,
-    planError,
-    weekStart,
-    weekEnd,
-    weekOffset,
-    weekRangeLabel,
-    recentSessions,
-    currentWeekOffset: weekOffset,
-    activityHeatmap,
-    activitySummary,
+    ...context,
+  });
+});
+
+app.get('/dashboard/week', async (req, res) => {
+  const requestedOffset = typeof req.query.weekOffset === 'string' ? Number.parseInt(req.query.weekOffset, 10) : 0;
+  const context = await buildDashboardContext(Number.isFinite(requestedOffset) ? requestedOffset : 0);
+
+  return res.render('partials/dashboard/weekly-activity', {
+    layout: false,
+    supabaseReady: context.supabaseReady,
+    planWeekIndex: context.planWeekIndex,
+    weekRangeLabel: context.weekRangeLabel,
+    weeklyDays: context.weeklyDays,
+    weeklySummary: context.weeklySummary,
+    weekOffset: context.weekOffset,
   });
 });
 
@@ -707,6 +530,199 @@ async function fetchExercises(supabase) {
     .limit(100);
 
   return { exercises: data || [], error };
+}
+
+async function buildDashboardContext(weekOffsetParam = 0) {
+  const supabaseReady = Boolean(supabaseClient);
+  const today = new Date();
+  const offset = Number.isFinite(weekOffsetParam) ? weekOffsetParam : 0;
+
+  const viewDate = new Date(today);
+  viewDate.setDate(viewDate.getDate() + offset * 7);
+  viewDate.setHours(0, 0, 0, 0);
+
+  const { start: weekStart, end: weekEnd } = getIsoWeekBounds(viewDate);
+
+  const dateFormatter = new Intl.DateTimeFormat('en', {
+    month: 'short',
+    day: 'numeric',
+  });
+  const weekRangeLabel = `${dateFormatter.format(weekStart)} – ${dateFormatter.format(weekEnd)}`;
+
+  const defaultDayHeaders = [
+    { key: 'mon', label: 'Monday' },
+    { key: 'tue', label: 'Tuesday' },
+    { key: 'wed', label: 'Wednesday' },
+    { key: 'thu', label: 'Thursday' },
+    { key: 'fri', label: 'Friday' },
+    { key: 'sat', label: 'Saturday' },
+    { key: 'sun', label: 'Sunday' },
+  ];
+
+  let activePlan = null;
+  let planWeekIndex = 1;
+  let planError = null;
+  let dayHeaders = defaultDayHeaders;
+  let weeklyAssignments = [];
+
+  if (supabaseReady) {
+    const { plan: fetchedPlan, error: activePlanError } = await plansModule.fetchActivePlan(supabaseClient);
+
+    if (activePlanError) {
+      console.error('Failed to load active plan for dashboard', activePlanError);
+      planError = 'Unable to load active plan details.';
+    } else if (fetchedPlan) {
+      activePlan = fetchedPlan;
+    } else {
+      const { plans: fallbackPlans, error: plansError } = await plansModule.fetchPlans(supabaseClient, { limit: 10 });
+      if (plansError) {
+        console.error('Failed to load plans for dashboard fallback', plansError);
+      } else if (Array.isArray(fallbackPlans) && fallbackPlans.length) {
+        activePlan = fallbackPlans.find((plan) => plan && plan.status === 'active') || null;
+      }
+    }
+
+    if (activePlan) {
+      planWeekIndex = determinePlanWeek(activePlan, today);
+
+      if (activePlan.schedule && Array.isArray(activePlan.schedule.weeks)) {
+        dayHeaders = Array.isArray(activePlan.schedule.dayHeaders) && activePlan.schedule.dayHeaders.length
+          ? activePlan.schedule.dayHeaders
+          : dayHeaders;
+
+        const targetWeek = activePlan.schedule.weeks.find((week) => week.number === planWeekIndex)
+          || activePlan.schedule.weeks[0];
+
+        if (targetWeek) {
+          weeklyAssignments = (targetWeek.days || []).map((day) => ({
+            day_index: day.day_index,
+            day_name: day.day_name,
+            workouts: Array.isArray(day.workouts) ? day.workouts : [],
+          }));
+        }
+      }
+    }
+  }
+
+  let weeklySessions = [];
+  if (supabaseReady) {
+    const weeklySessionsResult = await fetchSessionsForRange(supabaseClient, weekStart, weekEnd);
+    if (weeklySessionsResult.error) {
+      console.error('Failed to load sessions for dashboard', weeklySessionsResult.error);
+    } else {
+      weeklySessions = weeklySessionsResult.sessions;
+    }
+  }
+
+  const sessionsByDay = new Map();
+  weeklySessions.forEach((session) => {
+    const startedAt = session.started_at ? new Date(session.started_at) : null;
+    const dayIndex = clampDay(session.day_index || getIsoDayNumber(startedAt || today));
+    if (!sessionsByDay.has(dayIndex)) {
+      sessionsByDay.set(dayIndex, []);
+    }
+    sessionsByDay.get(dayIndex).push(session);
+  });
+
+  const weeklyDays = dayHeaders.map((header, index) => {
+    const dayIndex = index + 1;
+    const assigned = weeklyAssignments.find((day) => Number(day.day_index) === dayIndex);
+    const sessions = sessionsByDay.get(dayIndex) || [];
+
+    let status = 'idle';
+    if (sessions.some((session) => session.status === 'in-progress')) {
+      status = 'in-progress';
+    } else if (sessions.some((session) => session.status === 'completed')) {
+      status = 'completed';
+    }
+
+    return {
+      key: header.key,
+      label: header.label,
+      dayIndex,
+      workouts: assigned ? assigned.workouts : [],
+      sessions,
+      status,
+    };
+  });
+
+  const weeklyTotalMinutes = weeklySessions.reduce((accumulator, session) => {
+    if (Number.isFinite(session.duration_minutes)) {
+      return accumulator + session.duration_minutes;
+    }
+    if (Number.isFinite(session.duration_seconds)) {
+      return accumulator + Math.round(session.duration_seconds / 60);
+    }
+    return accumulator;
+  }, 0);
+
+  const weeklyActiveDays = new Set(
+    weeklySessions
+      .map((session) => {
+        if (!session.started_at) {
+          return null;
+        }
+        const date = new Date(session.started_at);
+        return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+      })
+      .filter(Boolean)
+  ).size;
+
+  const weeklySummary = {
+    totalSessions: weeklySessions.length,
+    completedSessions: weeklySessions.filter((session) => session.status === 'completed').length,
+    inProgressSessions: weeklySessions.filter((session) => session.status === 'in-progress').length,
+    totalDurationMinutes: weeklyTotalMinutes,
+    avgMinutesPerActiveDay: weeklyActiveDays ? Math.round(weeklyTotalMinutes / weeklyActiveDays) : 0,
+    activeDayCount: weeklyActiveDays,
+  };
+
+  const recentSessions = weeklySessions
+    .slice()
+    .sort((left, right) => new Date(right.started_at).getTime() - new Date(left.started_at).getTime())
+    .slice(0, 5);
+
+  const startOfRecentWindow = new Date(today);
+  startOfRecentWindow.setMonth(today.getMonth() - 1);
+  const { start: heatmapStart } = getIsoWeekBounds(startOfRecentWindow);
+  const { end: heatmapEnd } = getIsoWeekBounds(today);
+
+  let recentActivitySessions = [];
+  if (supabaseReady) {
+    const recentActivityResult = await fetchSessionsForRange(supabaseClient, heatmapStart, heatmapEnd);
+    if (recentActivityResult.error) {
+      console.error('Failed to load sessions for heatmap', recentActivityResult.error);
+    } else {
+      recentActivitySessions = recentActivityResult.sessions;
+    }
+  }
+
+  const activityHeatmap = buildActivityHeatmap(recentActivitySessions, heatmapStart, heatmapEnd);
+  const activitySummary = {
+    totalMinutes: activityHeatmap.totalMinutes,
+    avgMinutesPerActiveDay: activityHeatmap.activeDayCount
+      ? Math.round(activityHeatmap.totalMinutes / activityHeatmap.activeDayCount)
+      : 0,
+    activeDayCount: activityHeatmap.activeDayCount,
+    bestStreak: activityHeatmap.bestStreak,
+  };
+
+  return {
+    supabaseReady,
+    activePlan,
+    planWeekIndex,
+    weeklyDays,
+    weeklySummary,
+    planError,
+    weekStart,
+    weekEnd,
+    weekOffset: offset,
+    weekRangeLabel,
+    recentSessions,
+    currentWeekOffset: offset,
+    activityHeatmap,
+    activitySummary,
+  };
 }
 
 async function fetchSessionsForRange(supabase, start, end) {
