@@ -1,53 +1,84 @@
 .heatmap-table {
   border-collapse: separate;
-  border-spacing: 6px 4px;
+  border-spacing: 4px;
+  font-size: 11px;
 }
 
 .heatmap-table thead th {
   text-align: center;
-  font-weight: 600;
-  padding: 4px 6px;
-  color: rgba(15, 23, 42, 0.6);
-}
-
-.heatmap-corner {
-  width: 64px;
-}
-
-.heatmap-week {
-  min-width: 56px;
+  font-weight: 500;
+  padding: 2px 4px;
+  color: rgba(15, 23, 42, 0.5);
 }
 
 .dark .heatmap-table thead th {
-  color: rgba(248, 250, 252, 0.6);
+  color: rgba(248, 250, 252, 0.55);
+}
+
+.heatmap-corner {
+  width: 48px;
+}
+
+.heatmap-week {
+  min-width: 48px;
 }
 
 .heatmap-table tbody th {
   text-align: right;
-  font-weight: 600;
-  padding: 4px 6px 4px 0;
-  color: rgba(15, 23, 42, 0.6);
+  font-weight: 500;
+  padding: 2px 6px 2px 0;
+  color: rgba(15, 23, 42, 0.5);
 }
 
 .dark .heatmap-table tbody th {
-  color: rgba(248, 250, 252, 0.6);
+  color: rgba(248, 250, 252, 0.55);
 }
 
 .heatmap-table td {
   padding: 0;
 }
 
+.heatmap-cell {
+  position: relative;
+}
+
 .heatmap-dot {
   display: block;
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
   background-color: #e5e7eb;
   transition: transform 0.15s ease;
 }
 
 .heatmap-dot:hover {
-  transform: scale(1.1);
+  transform: scale(1.15);
+}
+
+.heatmap-dot::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  top: -8px;
+  transform: translate(-50%, -100%);
+  white-space: nowrap;
+  background: rgba(15, 23, 42, 0.9);
+  color: #f8fafc;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 10;
+}
+
+.dark .heatmap-dot::after {
+  background: rgba(15, 23, 42, 0.95);
+}
+
+.heatmap-dot:hover::after {
+  opacity: 1;
 }
 
 .heatmap-dot[data-intensity='0'] { background-color: #e5e7eb; }
@@ -61,3 +92,34 @@
 .dark .heatmap-dot[data-intensity='2'] { background-color: rgba(249, 115, 22, 0.55); }
 .dark .heatmap-dot[data-intensity='3'] { background-color: rgba(234, 88, 12, 0.75); }
 .dark .heatmap-dot[data-intensity='4'] { background-color: rgba(194, 65, 12, 0.95); }
+
+.heatmap-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 10px;
+  color: rgba(15, 23, 42, 0.55);
+}
+
+.dark .heatmap-legend {
+  color: rgba(248, 250, 252, 0.55);
+}
+
+.heatmap-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.dark .heatmap-legend li {
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+.heatmap-legend .heatmap-dot {
+  width: 12px;
+  height: 12px;
+}

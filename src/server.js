@@ -240,7 +240,8 @@ app.get('/', async (req, res) => {
 
   const sessionsByDay = new Map();
   weeklySessions.forEach((session) => {
-    const dayIndex = clampDay(session.day_index || getIsoDayNumber(new Date(session.started_at)));
+    const startedAt = session.started_at ? new Date(session.started_at) : null;
+    const dayIndex = clampDay(session.day_index || getIsoDayNumber(startedAt || today));
     if (!sessionsByDay.has(dayIndex)) {
       sessionsByDay.set(dayIndex, []);
     }
@@ -281,16 +282,35 @@ app.get('/', async (req, res) => {
     };
   });
 
+  const weeklyTotalMinutes = weeklySessions.reduce((accumulator, session) => {
+    if (Number.isFinite(session.duration_minutes)) {
+      return accumulator + session.duration_minutes;
+    }
+    if (Number.isFinite(session.duration_seconds)) {
+      return accumulator + Math.round(session.duration_seconds / 60);
+    }
+    return accumulator;
+  }, 0);
+
+  const weeklyActiveDays = new Set(
+    weeklySessions
+      .map((session) => {
+        if (!session.started_at) {
+          return null;
+        }
+        const date = new Date(session.started_at);
+        return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+      })
+      .filter(Boolean)
+  ).size;
+
   const weeklySummary = {
     totalSessions: weeklySessions.length,
     completedSessions: weeklySessions.filter((session) => session.status === 'completed').length,
     inProgressSessions: weeklySessions.filter((session) => session.status === 'in-progress').length,
-    totalDurationMinutes: weeklySessions.reduce((accumulator, session) => {
-      if (Number.isFinite(session.duration_seconds)) {
-        return accumulator + Math.round(session.duration_seconds / 60);
-      }
-      return accumulator;
-    }, 0),
+    totalDurationMinutes: weeklyTotalMinutes,
+    avgMinutesPerActiveDay: weeklyActiveDays ? Math.round(weeklyTotalMinutes / weeklyActiveDays) : 0,
+    activeDayCount: weeklyActiveDays,
   };
 
   const recentSessions = weeklySessions
@@ -305,12 +325,21 @@ app.get('/', async (req, res) => {
 
   const weekRangeLabel = `${dateFormatter.format(weekStart)} – ${dateFormatter.format(weekEnd)}`;
 
-  const heatmapStart = new Date(today);
-  heatmapStart.setMonth(today.getMonth() - 1);
-  const heatmapEnd = new Date(today);
+  const startOfRecentWindow = new Date(today);
+  startOfRecentWindow.setMonth(today.getMonth() - 1);
+  const { start: heatmapStart } = getIsoWeekBounds(startOfRecentWindow);
+  const { end: heatmapEnd } = getIsoWeekBounds(today);
   const recentActivityResult = await fetchSessionsForRange(supabaseClient, heatmapStart, heatmapEnd);
   const recentActivitySessions = recentActivityResult.error ? [] : recentActivityResult.sessions;
   const activityHeatmap = buildActivityHeatmap(recentActivitySessions, heatmapStart, heatmapEnd);
+  const activitySummary = {
+    totalMinutes: activityHeatmap.totalMinutes,
+    avgMinutesPerActiveDay: activityHeatmap.activeDayCount
+      ? Math.round(activityHeatmap.totalMinutes / activityHeatmap.activeDayCount)
+      : 0,
+    activeDayCount: activityHeatmap.activeDayCount,
+    bestStreak: activityHeatmap.bestStreak,
+  };
 
   res.render('home', {
     pageTitle: 'Dashboard',
@@ -328,6 +357,7 @@ app.get('/', async (req, res) => {
     recentSessions,
     currentWeekOffset: weekOffset,
     activityHeatmap,
+    activitySummary,
   });
 });
 
@@ -707,7 +737,16 @@ function buildActivityHeatmap(sessions, start, end) {
   const dayLabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   if (!Array.isArray(sessions) || !start || !end) {
-    return { dayLabels, weeks: [], maxMinutes: 0 };
+    return {
+      dayLabels,
+      weeks: [],
+      rows: [],
+      legend: [],
+      maxMinutes: 0,
+      totalMinutes: 0,
+      activeDayCount: 0,
+      bestStreak: 0,
+    };
   }
 
   const msPerDay = 24 * 60 * 60 * 1000;
@@ -738,6 +777,10 @@ function buildActivityHeatmap(sessions, start, end) {
 
   const cells = [];
   let maxMinutes = 0;
+  let totalMinutes = 0;
+  let activeDayCount = 0;
+  let currentStreak = 0;
+  let bestStreak = 0;
 
   for (let index = 0; index < dayCount; index += 1) {
     const date = new Date(startDate);
@@ -745,6 +788,14 @@ function buildActivityHeatmap(sessions, start, end) {
     const isoDate = date.toISOString().slice(0, 10);
     const minutes = minutesByDate.get(isoDate) || 0;
     maxMinutes = Math.max(maxMinutes, minutes);
+    totalMinutes += minutes;
+    if (minutes > 0) {
+      activeDayCount += 1;
+      currentStreak += 1;
+      bestStreak = Math.max(bestStreak, currentStreak);
+    } else {
+      currentStreak = 0;
+    }
 
     cells.push({
       date,
@@ -758,8 +809,8 @@ function buildActivityHeatmap(sessions, start, end) {
       return [0, 0, 0];
     }
 
-    const quarter = Math.max(1, Math.round(maxMinutes / 4));
-    return [quarter, quarter * 2, quarter * 3];
+    const step = Math.ceil(maxMinutes / 4);
+    return [step, step * 2, step * 3];
   })();
 
   const intensityForMinutes = (minutes) => {
@@ -818,7 +869,66 @@ function buildActivityHeatmap(sessions, start, end) {
     weeks.push({ label, cells: column });
   }
 
-  return { dayLabels, weeks, maxMinutes };
+  const rows = dayLabels.map((label, dayIndex) => ({
+    label,
+    cells: weeks.map((week) => week.cells[dayIndex] || {
+      date: null,
+      isoDate: '',
+      minutes: 0,
+      intensity: 0,
+    }),
+  }));
+
+  const legend = (() => {
+    if (maxMinutes <= 0) {
+      return [
+        { intensity: 0, label: '0 min' },
+      ];
+    }
+
+    const formatRange = (min, max) => {
+      if (min === max) {
+        return `${min} min`;
+      }
+      return `${min}–${max} min`;
+    };
+
+    const ranges = [
+      { intensity: 0, label: '0 min' },
+      { intensity: 1, label: formatRange(1, Math.max(1, thresholds[0])) },
+    ];
+
+    const range2Start = thresholds[0] + 1;
+    const range2End = thresholds[1];
+    if (range2Start <= range2End) {
+      ranges.push({ intensity: 2, label: formatRange(range2Start, range2End) });
+    }
+
+    const range3Start = thresholds[1] + 1;
+    const range3End = thresholds[2];
+    if (range3Start <= range3End) {
+      ranges.push({ intensity: 3, label: formatRange(range3Start, range3End) });
+    }
+
+    const range4Start = thresholds[2] + 1;
+    if (range4Start <= maxMinutes) {
+      ranges.push({ intensity: 4, label: `≥ ${range4Start} min` });
+    }
+
+    return ranges;
+  })();
+
+  return {
+    dayLabels,
+    weeks,
+    rows,
+    legend,
+    thresholds,
+    maxMinutes,
+    totalMinutes,
+    activeDayCount,
+    bestStreak,
+  };
 }
 
 function determinePlanWeek(plan, referenceDate = new Date()) {

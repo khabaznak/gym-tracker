@@ -16,6 +16,20 @@
               {{/if}}
               <p class="text-xs uppercase tracking-wide text-graphite/60 dark:text-fog/60">Status: <span class="font-semibold {{#if (eq activePlan.status 'active')}}text-teal dark:text-orange{{else}}text-graphite/70 dark:text-fog/70{{/if}}">{{capitalize activePlan.status}}</span></p>
             </div>
+            <dl class="mt-4 grid grid-cols-3 gap-3 text-xs text-graphite/70 dark:text-fog/70">
+              <div class="rounded-lg border border-graphite/10 bg-fog/50 px-3 py-2 shadow-sm dark:border-fog/20 dark:bg-graphite/70">
+                <dt class="uppercase tracking-wide">Minutes logged</dt>
+                <dd class="mt-1 text-base font-semibold text-ink dark:text-white">{{activitySummary.totalMinutes}}</dd>
+              </div>
+              <div class="rounded-lg border border-graphite/10 bg-fog/50 px-3 py-2 shadow-sm dark:border-fog/20 dark:bg-graphite/70">
+                <dt class="uppercase tracking-wide">Avg min / active day</dt>
+                <dd class="mt-1 text-base font-semibold text-ink dark:text-white">{{activitySummary.avgMinutesPerActiveDay}}</dd>
+              </div>
+              <div class="rounded-lg border border-graphite/10 bg-fog/50 px-3 py-2 shadow-sm dark:border-fog/20 dark:bg-graphite/70">
+                <dt class="uppercase tracking-wide">Best streak</dt>
+                <dd class="mt-1 text-base font-semibold text-ink dark:text-white">{{activitySummary.bestStreak}} day{{#unless (eq activitySummary.bestStreak 1)}}s{{/unless}}</dd>
+              </div>
+            </dl>
             <div class="mt-4 space-y-2">
               <div class="flex items-center justify-between">
                 <p class="text-xs uppercase tracking-wide text-graphite/60 dark:text-fog/60">Recent activity</p>
@@ -33,25 +47,33 @@
                       </tr>
                     </thead>
                     <tbody>
-                      {{#each activityHeatmap.dayLabels}}
+                      {{#each activityHeatmap.rows}}
                         <tr>
-                          <th class="heatmap-day">{{this}}</th>
-                          {{#each ../activityHeatmap.weeks}}
-                            {{#with (lookup this.cells @../index) as |cell|}}
-                              <td>
-                                <span
-                                  class="heatmap-dot"
-                                  data-intensity="{{cell.intensity}}"
-                                  title="{{formatDate cell.isoDate}} · {{cell.minutes}} minute(s)"
-                                ></span>
-                              </td>
-                            {{/with}}
+                          <th class="heatmap-day">{{label}}</th>
+                          {{#each cells}}
+                            <td class="heatmap-cell">
+                              <span
+                                class="heatmap-dot"
+                                data-intensity="{{intensity}}"
+                                data-tooltip="{{formatDate isoDate}} · {{minutes}} min"
+                              ></span>
+                            </td>
                           {{/each}}
                         </tr>
                       {{/each}}
                     </tbody>
                   </table>
                 </div>
+                {{#if activityHeatmap.legend.length}}
+                  <ul class="heatmap-legend">
+                    {{#each activityHeatmap.legend}}
+                      <li>
+                        <span class="heatmap-dot" data-intensity="{{intensity}}"></span>
+                        <span>{{label}}</span>
+                      </li>
+                    {{/each}}
+                  </ul>
+                {{/if}}
               {{else}}
                 <p class="rounded-lg border border-graphite/10 bg-fog/60 px-3 py-2 text-xs text-graphite/60 dark:border-fog/20 dark:bg-graphite/60 dark:text-fog/70">No recent session data yet. Complete a session to see trends here.</p>
               {{/if}}
@@ -63,7 +85,7 @@
           <p class="rounded-lg border border-graphite/10 bg-fog/60 px-3 py-2 text-sm text-graphite/70 dark:border-fog/20 dark:bg-graphite/60 dark:text-fog/70">Connect Supabase to load plan and session data.</p>
         {{/if}}
       </div>
-      <dl class="grid w-full max-w-md grid-cols-2 gap-4 text-sm text-graphite/80 dark:text-fog/80">
+      <dl class="grid w-full max-w-xl grid-cols-2 gap-4 text-sm text-graphite/80 dark:text-fog/80 sm:grid-cols-4">
         <div class="rounded-lg border border-graphite/10 bg-fog/50 px-3 py-2 shadow-sm dark:border-fog/20 dark:bg-graphite/70">
           <dt class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Sessions this week</dt>
           <dd class="text-lg font-semibold text-ink dark:text-white">{{weeklySummary.totalSessions}}</dd>
@@ -73,14 +95,18 @@
           <dd class="text-lg font-semibold text-ink dark:text-white">{{weeklySummary.completedSessions}}</dd>
         </div>
         <div class="rounded-lg border border-graphite/10 bg-fog/50 px-3 py-2 shadow-sm dark:border-fog/20 dark:bg-graphite/70">
-          <dt class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">In progress</dt>
-          <dd class="text-lg font-semibold text-ink dark:text-white">{{weeklySummary.inProgressSessions}}</dd>
-        </div>
-        <div class="rounded-lg border border-graphite/10 bg-fog/50 px-3 py-2 shadow-sm dark:border-fog/20 dark:bg-graphite/70">
-          <dt class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Logged minutes</dt>
-          <dd class="text-lg font-semibold text-ink dark:text-white">{{weeklySummary.totalDurationMinutes}}</dd>
-        </div>
-      </dl>
+      <dt class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">In progress</dt>
+      <dd class="text-lg font-semibold text-ink dark:text-white">{{weeklySummary.inProgressSessions}}</dd>
+    </div>
+    <div class="rounded-lg border border-graphite/10 bg-fog/50 px-3 py-2 shadow-sm dark:border-fog/20 dark:bg-graphite/70">
+      <dt class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Logged minutes</dt>
+      <dd class="text-lg font-semibold text-ink dark:text-white">{{weeklySummary.totalDurationMinutes}}</dd>
+    </div>
+    <div class="rounded-lg border border-graphite/10 bg-fog/50 px-3 py-2 shadow-sm dark:border-fog/20 dark:bg-graphite/70">
+      <dt class="text-xs font-semibold uppercase tracking-wide text-graphite/60 dark:text-fog/60">Avg min / active day</dt>
+      <dd class="text-lg font-semibold text-ink dark:text-white">{{weeklySummary.avgMinutesPerActiveDay}}</dd>
+    </div>
+  </dl>
     </div>
   </section>
 
